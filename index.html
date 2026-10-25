@@ -4,14 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Captain Reztroid — Interactive Pirate Sea Portfolio</title>
-  
-  <!-- SEO & Social Sharing Meta Tags -->
-  <meta name="description" content="Website portfolio dan katalog layanan interaktif 3D bertema bajak laut oleh Captain Reztroid.">
-  <meta property="og:title" content="Captain Reztroid — 3D Pirate Sea Portfolio">
-  <meta property="og:description" content="Kemudikan kapal The Black Revenge melintasi samudra 3D dan temukan paket layanan digital terbaik.">
-  <meta property="og:type" content="website">
-  <meta name="theme-color" content="#d6cbb9">
-
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Google Fonts: Plus Jakarta Sans -->
@@ -189,7 +181,7 @@
             <span class="eq-bar eq-bar-2"></span>
             <span class="eq-bar eq-bar-3"></span>
           </div>
-          <span id="audio-label">PotC Theme</span>
+          <span id="audio-label">Sea Shanty</span>
         </button>
 
         <button id="btn-theme" onclick="toggleSkyTheme()" title="Siang / Malam" class="w-8 h-8 sm:w-9 sm:h-9 rounded-full pill-surface flex items-center justify-center hover:scale-105 active:scale-95 transition">
@@ -229,21 +221,6 @@
     </button>
   </div>
 
-  <!-- Mobile On-Screen Steering Touch Controls (Visible on Mobile only) -->
-  <div class="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-3 z-20 flex flex-col items-center gap-1.5 pointer-events-auto sm:hidden">
-    <button id="btn-mobile-forward" class="w-11 h-11 rounded-full pill-surface flex items-center justify-center active:scale-90 shadow-lg text-stone-800">
-      <i data-lucide="arrow-up" class="w-5 h-5"></i>
-    </button>
-    <div class="flex items-center gap-2">
-      <button id="btn-mobile-left" class="w-11 h-11 rounded-full pill-surface flex items-center justify-center active:scale-90 shadow-lg text-stone-800">
-        <i data-lucide="arrow-left" class="w-5 h-5"></i>
-      </button>
-      <button id="btn-mobile-right" class="w-11 h-11 rounded-full pill-surface flex items-center justify-center active:scale-90 shadow-lg text-stone-800">
-        <i data-lucide="arrow-right" class="w-5 h-5"></i>
-      </button>
-    </div>
-  </div>
-
   <!-- Floating Island Preview Card -->
   <div id="island-preview-card" class="fixed bottom-[calc(3.8rem+env(safe-area-inset-bottom))] sm:bottom-20 inset-x-0 z-30 flex justify-center px-3 pointer-events-none transition-all duration-200 opacity-0 translate-y-4">
     <div class="pointer-events-auto pill-surface w-full max-w-md rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 shadow-2xl relative">
@@ -274,7 +251,7 @@
           <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
           <span>Lihat Detail</span>
         </button>
-        <a id="preview-external-link" href="https://wa.me/6281299961001" target="_blank" rel="noopener noreferrer" class="py-2 sm:py-2.5 px-3 rounded-xl pill-dark font-bold text-xs flex items-center justify-center gap-1.5 transition hover:opacity-90 active:scale-95">
+        <a id="preview-external-link" href="https://wa.me/6281234567890" target="_blank" rel="noopener noreferrer" class="py-2 sm:py-2.5 px-3 rounded-xl pill-dark font-bold text-xs flex items-center justify-center gap-1.5 transition hover:opacity-90 active:scale-95">
           <span id="preview-link-label">Buka Link</span>
           <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i>
         </a>
@@ -328,8 +305,8 @@
           <span class="px-2 py-1 bg-stone-200/80 rounded font-mono text-stone-900">Berlayar ke Titik</span>
         </div>
         <div class="flex items-center justify-between py-2 border-b border-stone-200">
-          <span class="font-semibold text-stone-800">Kemudi (Desktop / HP)</span>
-          <span class="px-2 py-1 bg-stone-200/80 rounded font-mono text-stone-900">WASD / Tombol Layar</span>
+          <span class="font-semibold text-stone-800">Kemudi Keyboard</span>
+          <span class="px-2 py-1 bg-stone-200/80 rounded font-mono text-stone-900">W A S D / Panah</span>
         </div>
         <div class="flex items-center justify-between py-2 border-b border-stone-200">
           <span class="font-semibold text-stone-800">Tembak Meriam</span>
@@ -348,6 +325,7 @@
     // KONFIGURASI LINK & KONTEN CAPTAIN REZTROID
     // ============================================================================
     const REZTROID_CONFIG = {
+      customMp3Url: '',
       links: {
         haven: 'https://instagram.com/heyreztroid/',
         vault: 'https://wa.me/6281299961001?text=Halo%20Captain%20Reztroid,%20saya%20ingin%20tanya%20pricelist',
@@ -580,6 +558,7 @@
         skyHorizon: new THREE.Color('#ede2d3'),
         fog: new THREE.Color('#e4d7c5'),
         waterColor: new THREE.Color('#257586'),
+        waterDeep: new THREE.Color('#184d59'),
         ambientColor: new THREE.Color('#fff5e6'),
         ambientIntensity: 0.78,
         sunColor: new THREE.Color('#ffe0b2'),
@@ -590,6 +569,7 @@
         skyHorizon: new THREE.Color('#132238'),
         fog: new THREE.Color('#101d30'),
         waterColor: new THREE.Color('#0c293a'),
+        waterDeep: new THREE.Color('#071824'),
         ambientColor: new THREE.Color('#4a6fa5'),
         ambientIntensity: 0.62,
         sunColor: new THREE.Color('#7ca5d8'),
@@ -613,11 +593,18 @@
     const shadowRes = isMobileScreen ? 1024 : 2048;
     sunLight.shadow.mapSize.width = shadowRes;
     sunLight.shadow.mapSize.height = shadowRes;
+    sunLight.shadow.camera.near = 5;
+    sunLight.shadow.camera.far = 95;
+    const d = 34;
+    sunLight.shadow.camera.left = -d;
+    sunLight.shadow.camera.right = d;
+    sunLight.shadow.camera.top = d;
+    sunLight.shadow.camera.bottom = -d;
     sunLight.shadow.bias = -0.0005;
     scene.add(sunLight);
 
     // ============================================================================
-    // MATERIALS & JOLLY ROGER TEXTURE
+    // SHARED HD MATERIALS & CRISP JOLLY ROGER FLAG TEXTURE
     // ============================================================================
     const materials = {
       sand: new THREE.MeshStandardMaterial({ color: 0xe8d1a7, roughness: 0.88, flatShading: true }),
@@ -653,9 +640,11 @@
       c.height = 512;
       const ctx = c.getContext('2d');
 
+      // Deep Pirate Fabric Background
       ctx.fillStyle = '#141413';
       ctx.fillRect(0, 0, c.width, c.height);
 
+      // Golden Ornate Border
       ctx.strokeStyle = '#f59e0b';
       ctx.lineWidth = 12;
       ctx.strokeRect(18, 18, c.width - 36, c.height - 36);
@@ -663,6 +652,7 @@
       ctx.save();
       ctx.translate(c.width / 2, c.height / 2);
 
+      // Crossed Bones
       ctx.strokeStyle = '#e5e7eb';
       ctx.fillStyle = '#e5e7eb';
       ctx.lineWidth = 22;
@@ -684,26 +674,31 @@
         ctx.restore();
       });
 
+      // Skull Head
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
       ctx.arc(0, -22, 68, 0, Math.PI * 2);
       ctx.fill();
 
+      // Jaw
       ctx.beginPath();
       ctx.roundRect(-38, 22, 76, 46, 12);
       ctx.fill();
 
+      // Red Captain Bandana
       ctx.fillStyle = '#dc2626';
       ctx.beginPath();
       ctx.arc(0, -28, 70, Math.PI * 1.05, Math.PI * 1.95);
       ctx.fill();
 
+      // Eye Sockets
       ctx.fillStyle = '#141413';
       ctx.beginPath();
       ctx.arc(-24, -16, 15, 0, Math.PI * 2);
       ctx.arc(24, -16, 15, 0, Math.PI * 2);
       ctx.fill();
 
+      // Nose
       ctx.beginPath();
       ctx.moveTo(0, 2);
       ctx.lineTo(-10, 18);
@@ -711,6 +706,7 @@
       ctx.closePath();
       ctx.fill();
 
+      // Teeth lines
       ctx.strokeStyle = '#141413';
       ctx.lineWidth = 5;
       [-18, 0, 18].forEach(tx => {
@@ -1269,7 +1265,7 @@
     createSeagull(11.5, -10.5, 4.5, 0.8, 3.7);
 
     // ============================================================================
-    // CAPTAIN REZTROID'S SHIP ("THE BLACK REVENGE")
+    // CAPTAIN REZTROID'S SHIP ("THE BLACK REVENGE") - FIXED TAPERED BOW
     // ============================================================================
     const shipGroup = new THREE.Group();
     shipGroup.position.set(-4.5, 0.15, 6.5);
@@ -1278,6 +1274,32 @@
 
     const shipModel = new THREE.Group();
     shipGroup.add(shipModel);
+
+    // Helper for creating a clean tapered V-shaped bow hull mesh
+    function createTaperedBowGeo(widthRear, widthFront, height, length, bottomTaper = 0.75) {
+      const geo = new THREE.BoxGeometry(widthRear, height, length, 1, 1, 1);
+      const pos = geo.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const z = pos.getZ(i);
+        const y = pos.getY(i);
+        const x = pos.getX(i);
+
+        // Front vertices (z > 0) taper inward to form a sharp nautical prow
+        if (z > 0) {
+          const xScale = widthFront / widthRear;
+          pos.setX(i, x * xScale);
+          // Slight upward rake on lower front edge (cutwater)
+          if (y < 0) {
+            pos.setZ(i, z * bottomTaper);
+          }
+        } else if (y < 0) {
+          // Slight V-bottom hull shape at the rear seam
+          pos.setX(i, x * 0.86);
+        }
+      }
+      geo.computeVertexNormals();
+      return geo;
+    }
 
     const lowerHull = new THREE.Mesh(new THREE.BoxGeometry(1.32, 0.45, 3.1), materials.woodDark);
     lowerHull.position.y = 0.26;
@@ -1301,20 +1323,44 @@
     hullTrim.position.y = 0.68;
     shipModel.add(hullTrim);
 
-    const bowWedge = new THREE.Mesh(new THREE.ConeGeometry(0.95, 1.25, 4), materials.woodMid);
-    bowWedge.rotation.x = Math.PI / 2;
-    bowWedge.rotation.z = Math.PI / 4;
-    bowWedge.scale.set(0.82, 1, 0.48);
-    bowWedge.position.set(0, 0.58, 2.15);
-    shipModel.add(bowWedge);
+    // Seamless Tapered Bow Hull (replaces awkward rotated cone)
+    const lowerBow = new THREE.Mesh(createTaperedBowGeo(1.32, 0.12, 0.45, 1.05, 0.65), materials.woodDark);
+    lowerBow.position.set(0, 0.26, 2.05);
+    shipModel.add(lowerBow);
 
-    const bowSprit = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.075, 1.75, 7), materials.woodDark);
+    const upperBow = new THREE.Mesh(createTaperedBowGeo(1.56, 0.16, 0.42, 1.25, 0.78), materials.woodMid);
+    upperBow.position.set(0, 0.58, 2.34);
+    shipModel.add(upperBow);
+
+    const bowDeck = new THREE.Mesh(createTaperedBowGeo(1.46, 0.18, 0.08, 1.18, 1.0), materials.woodLight);
+    bowDeck.position.set(0, 0.80, 2.24);
+    shipModel.add(bowDeck);
+
+    const bowTrim = new THREE.Mesh(createTaperedBowGeo(1.62, 0.2, 0.1, 1.26, 0.9), materials.hullTrim);
+    bowTrim.position.set(0, 0.68, 2.35);
+    shipModel.add(bowTrim);
+
+    // Angled Bow Rails (left & right converging toward the prow)
+    [-1, 1].forEach(side => {
+      const bowRail = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.16, 1.18), materials.woodDark);
+      bowRail.position.set(side * 0.43, 0.88, 2.15);
+      bowRail.rotation.y = -side * 0.46;
+      shipModel.add(bowRail);
+    });
+
+    // Curved Prow Stempost & Bowsprit
+    const prowStem = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.72, 0.18), materials.woodDark);
+    prowStem.rotation.x = -0.35;
+    prowStem.position.set(0, 0.62, 2.86);
+    shipModel.add(prowStem);
+
+    const bowSprit = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.075, 1.85, 8), materials.woodDark);
     bowSprit.rotation.x = Math.PI / 2.65;
-    bowSprit.position.set(0, 0.88, 2.38);
+    bowSprit.position.set(0, 1.02, 3.25);
     shipModel.add(bowSprit);
 
-    const figurehead = new THREE.Mesh(new THREE.OctahedronGeometry(0.18, 0), materials.gold);
-    figurehead.position.set(0, 0.68, 2.35);
+    const figurehead = new THREE.Mesh(new THREE.OctahedronGeometry(0.16, 0), materials.gold);
+    figurehead.position.set(0, 0.76, 2.98);
     shipModel.add(figurehead);
 
     const rudder = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.65, 0.38), materials.woodDark);
@@ -1401,7 +1447,7 @@
     shipModel.add(foreSail);
 
     const riggingPoints = [
-      new THREE.Vector3(0, 3.5, 0.12), new THREE.Vector3(0, 1.15, 2.85),
+      new THREE.Vector3(0, 3.5, 0.12), new THREE.Vector3(0, 1.25, 3.85),
       new THREE.Vector3(0, 3.5, 0.12), new THREE.Vector3(-0.72, 0.9, 0.12),
       new THREE.Vector3(0, 3.5, 0.12), new THREE.Vector3(0.72, 0.9, 0.12),
       new THREE.Vector3(0, 3.5, 0.12), new THREE.Vector3(0, 1.45, -1.65)
@@ -1419,7 +1465,7 @@
       });
 
       const anchor = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.03, 5, 8, Math.PI), materials.iron);
-      anchor.position.set(sideX * 0.95, 0.55, 1.55);
+      anchor.position.set(sideX * 0.65, 0.58, 2.15);
       anchor.rotation.y = Math.PI / 2;
       shipModel.add(anchor);
     });
@@ -1461,31 +1507,6 @@
     window.addEventListener('keyup', (e) => {
       keysPressed[e.code] = false;
     });
-
-    // Mobile Virtual Touch Controller Setup
-    function attachTouchControl(btnId, keyCode) {
-      const btn = document.getElementById(btnId);
-      if (!btn) return;
-      const startHandler = (e) => {
-        e.preventDefault();
-        ensureFirstInteractionAudio();
-        keysPressed[keyCode] = true;
-      };
-      const endHandler = (e) => {
-        e.preventDefault();
-        keysPressed[keyCode] = false;
-      };
-      btn.addEventListener('touchstart', startHandler, { passive: false });
-      btn.addEventListener('touchend', endHandler, { passive: false });
-      btn.addEventListener('touchcancel', endHandler, { passive: false });
-      btn.addEventListener('mousedown', startHandler);
-      btn.addEventListener('mouseup', endHandler);
-      btn.addEventListener('mouseleave', endHandler);
-    }
-
-    attachTouchControl('btn-mobile-forward', 'KeyW');
-    attachTouchControl('btn-mobile-left', 'KeyA');
-    attachTouchControl('btn-mobile-right', 'KeyD');
 
     let activeIslandId = 'haven';
     let cameraFollowShip = true;
@@ -1818,31 +1839,31 @@
     }
 
     // ============================================================================
-    // "HE'S A PIRATE" (PIRATES OF THE CARIBBEAN) CINEMATIC BGM AUDIO SYNTHESIS
+    // AUTHENTIC PIRATE SEA SHANTY AUDIO SYNTHESIS
     // ============================================================================
     let audioCtx = null;
     let isPlayingBGM = false;
     let shantyTimer = null;
     let hasAutoStartedBGM = false;
 
-    // Iconic "He's a Pirate" main theme melody in D minor
-    const POTC_MELODY = [
-      { f: 293.66, dur: 0.24 }, // D4
-      { f: 329.63, dur: 0.24 }, // E4
-      { f: 392.00, dur: 0.48 }, // G4
-      { f: 392.00, dur: 0.48 }, // G4
-      { f: 440.00, dur: 0.24 }, // A4
-      { f: 392.00, dur: 0.24 }, // G4
-      { f: 349.23, dur: 0.48 }, // F4
-      { f: 392.00, dur: 0.48 }, // G4
-      { f: 523.25, dur: 0.48 }, // C5
-      { f: 440.00, dur: 0.48 }, // A4
-      { f: 392.00, dur: 0.48 }, // G4
-      { f: 349.23, dur: 0.48 }, // F4
-      { f: 392.00, dur: 0.48 }, // G4
-      { f: 329.63, dur: 0.96 }  // E4
+    // Classic Sea Shanty progression (D Minor / Dorian mode: D4, F4, G4, A4, C5, A4, G4, F4)
+    const SHANTY_MELODY = [
+      { f: 293.66, dur: 0.35 }, // D4
+      { f: 349.23, dur: 0.35 }, // F4
+      { f: 392.00, dur: 0.70 }, // G4
+      { f: 440.00, dur: 0.35 }, // A4
+      { f: 523.25, dur: 0.70 }, // C5
+      { f: 440.00, dur: 0.35 }, // A4
+      { f: 392.00, dur: 0.35 }, // G4
+      { f: 349.23, dur: 0.70 }, // F4
+      { f: 392.00, dur: 0.35 }, // G4
+      { f: 440.00, dur: 0.35 }, // A4
+      { f: 392.00, dur: 0.35 }, // G4
+      { f: 349.23, dur: 0.35 }, // F4
+      { f: 329.63, dur: 0.35 }, // E4
+      { f: 293.66, dur: 1.05 }  // D4
     ];
-    let potcStep = 0;
+    let shantyStep = 0;
 
     function initAudioContext() {
       if (!audioCtx) {
@@ -1854,12 +1875,13 @@
       }
     }
 
-    function playPotCNote() {
+    function playSeaShantyNote() {
       if (!isPlayingBGM || !audioCtx) return;
       const now = audioCtx.currentTime;
-      const note = POTC_MELODY[potcStep % POTC_MELODY.length];
-      potcStep++;
+      const note = SHANTY_MELODY[shantyStep % SHANTY_MELODY.length];
+      shantyStep++;
 
+      // Lead Accordion / Fiddle synth voice (sawtooth + lowpass filter)
       const osc = audioCtx.createOscillator();
       const filter = audioCtx.createBiquadFilter();
       const gain = audioCtx.createGain();
@@ -1868,12 +1890,12 @@
       osc.frequency.setValueAtTime(note.f, now);
 
       filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(1150, now);
-      filter.frequency.exponentialRampToValueAtTime(380, now + note.dur * 0.85);
+      filter.frequency.setValueAtTime(750, now);
+      filter.frequency.exponentialRampToValueAtTime(350, now + note.dur * 0.8);
 
       gain.gain.setValueAtTime(0.001, now);
-      gain.gain.linearRampToValueAtTime(0.05, now + 0.04);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + note.dur * 0.95);
+      gain.gain.linearRampToValueAtTime(0.06, now + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + note.dur * 0.95);
 
       osc.connect(filter);
       filter.connect(gain);
@@ -1882,20 +1904,20 @@
       osc.start(now);
       osc.stop(now + note.dur);
 
-      // Bass drone on downbeats
-      if (potcStep % 2 === 0) {
+      // Bass drone accompaniment on beat 1 and 3
+      if (shantyStep % 2 === 0) {
         const bassOsc = audioCtx.createOscillator();
         const bassGain = audioCtx.createGain();
         bassOsc.type = 'triangle';
         bassOsc.frequency.setValueAtTime(146.83, now); // D3
         bassGain.gain.setValueAtTime(0.001, now);
-        bassGain.gain.linearRampToValueAtTime(0.07, now + 0.03);
-        bassGain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+        bassGain.gain.linearRampToValueAtTime(0.08, now + 0.04);
+        bassGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
 
         bassOsc.connect(bassGain);
         bassGain.connect(audioCtx.destination);
         bassOsc.start(now);
-        bassOsc.stop(now + 0.35);
+        bassOsc.stop(now + 0.38);
       }
     }
 
@@ -1907,13 +1929,13 @@
 
       if (isPlayingBGM) {
         eq.classList.add('playing');
-        label.textContent = 'PotC On';
+        label.textContent = 'Shanty On';
         if (shantyTimer) clearInterval(shantyTimer);
-        playPotCNote();
-        shantyTimer = setInterval(playPotCNote, 410);
+        playSeaShantyNote();
+        shantyTimer = setInterval(playSeaShantyNote, 380);
       } else {
         eq.classList.remove('playing');
-        label.textContent = 'PotC Theme';
+        label.textContent = 'Sea Shanty';
         if (shantyTimer) {
           clearInterval(shantyTimer);
           shantyTimer = null;
