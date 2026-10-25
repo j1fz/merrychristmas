@@ -1,0 +1,2089 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Captain Reztroid — Interactive Pirate Sea Portfolio</title>
+  
+  <!-- SEO & Social Sharing Meta Tags -->
+  <meta name="description" content="Website portfolio dan katalog layanan interaktif 3D bertema bajak laut oleh Captain Reztroid.">
+  <meta property="og:title" content="Captain Reztroid — 3D Pirate Sea Portfolio">
+  <meta property="og:description" content="Kemudikan kapal The Black Revenge melintasi samudra 3D dan temukan paket layanan digital terbaik.">
+  <meta property="og:type" content="website">
+  <meta name="theme-color" content="#d6cbb9">
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Three.js & GSAP -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+  <style>
+    :root {
+      --pill-bg: rgba(251, 248, 241, 0.94);
+      --pill-text: #1c1917;
+      --pill-border: rgba(28, 25, 23, 0.1);
+      --pill-dark-bg: #1c1917;
+      --pill-dark-text: #fafaf9;
+    }
+
+    body.night-mode {
+      --pill-bg: rgba(18, 25, 36, 0.92);
+      --pill-text: #f5f5f4;
+      --pill-border: rgba(255, 255, 255, 0.14);
+      --pill-dark-bg: #f59e0b;
+      --pill-dark-text: #0f172a;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      min-height: 100dvh;
+      overflow: hidden;
+      position: fixed;
+      inset: 0;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      touch-action: none;
+      letter-spacing: -0.01em;
+      background-color: #d6cbb9;
+    }
+
+    .font-nautical {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    #webgl-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100% !important;
+      height: 100% !important;
+      outline: none;
+      z-index: 1;
+      display: block;
+      cursor: grab;
+    }
+    #webgl-canvas:active {
+      cursor: grabbing;
+    }
+
+    .pill-surface {
+      background: var(--pill-bg);
+      color: var(--pill-text);
+      border: 1px solid var(--pill-border);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 8px 26px -4px rgba(0, 0, 0, 0.12), 0 2px 6px -1px rgba(0, 0, 0, 0.06);
+      transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .pill-dark {
+      background: var(--pill-dark-bg);
+      color: var(--pill-dark-text);
+      box-shadow: 0 6px 18px -3px rgba(0, 0, 0, 0.25);
+      transition: all 0.25s ease;
+    }
+
+    /* 3D Screen Space Island Pins */
+    .island-pin {
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 15;
+      transform: translate(-50%, -50%);
+      pointer-events: auto;
+      cursor: pointer;
+      white-space: nowrap;
+      will-change: left, top;
+    }
+    .island-pin:hover {
+      transform: translate(-50%, -56%) scale(1.05);
+    }
+    .island-pin:active {
+      transform: translate(-50%, -50%) scale(0.96);
+    }
+
+    /* Equalizer Bars */
+    @keyframes eqPulse {
+      0%, 100% { height: 3px; }
+      50% { height: 11px; }
+    }
+    .eq-bar {
+      width: 2.5px;
+      height: 3px;
+      background: currentColor;
+      border-radius: 2px;
+      transition: height 0.2s ease;
+    }
+    .playing .eq-bar-1 { animation: eqPulse 0.65s infinite ease-in-out 0s; }
+    .playing .eq-bar-2 { animation: eqPulse 0.55s infinite ease-in-out 0.2s; }
+    .playing .eq-bar-3 { animation: eqPulse 0.75s infinite ease-in-out 0.35s; }
+
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body>
+
+  <!-- 3D WebGL Canvas -->
+  <canvas id="webgl-canvas"></canvas>
+
+  <!-- 3D Projected Island Pins -->
+  <div id="pins-container" class="fixed inset-0 pointer-events-none z-10 overflow-hidden">
+    <button id="pin-haven" onclick="sailToIsland('haven', true)" class="island-pin pill-surface px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-bold">
+      <span class="w-2 h-2 rounded-full bg-amber-600 shrink-0"></span>
+      <span>About</span>
+      <span class="opacity-55 font-medium hidden sm:inline">Reztroid</span>
+    </button>
+
+    <button id="pin-vault" onclick="sailToIsland('vault', true)" class="island-pin pill-surface px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-bold">
+      <span class="w-2 h-2 rounded-full bg-amber-600 shrink-0"></span>
+      <span>Pricelist</span>
+      <span class="opacity-55 font-medium hidden sm:inline">Katalog</span>
+    </button>
+
+    <button id="pin-log" onclick="sailToIsland('log', true)" class="island-pin pill-surface px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-bold">
+      <span class="w-2 h-2 rounded-full bg-amber-600 shrink-0"></span>
+      <span>Testimoni</span>
+      <span class="opacity-55 font-medium hidden sm:inline">Review</span>
+    </button>
+
+    <button id="pin-signal" onclick="sailToIsland('signal', true)" class="island-pin pill-surface px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-bold">
+      <span class="w-2 h-2 rounded-full bg-amber-600 shrink-0"></span>
+      <span>Order</span>
+      <span class="opacity-55 font-medium hidden sm:inline">Kontak</span>
+    </button>
+  </div>
+
+  <!-- Top Navigation Bar (Responsive Mobile & Desktop) -->
+  <header class="fixed top-0 inset-x-0 z-30 pt-[max(0.6rem,env(safe-area-inset-top))] px-2.5 pb-2 sm:p-5 flex flex-col items-center pointer-events-none gap-1 sm:gap-2">
+    <div class="w-full max-w-4xl flex items-center justify-between gap-1.5 pointer-events-auto">
+      <button onclick="sailToIsland('haven', true)" class="pill-surface px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full flex items-center gap-2 transition hover:scale-[1.02] active:scale-95 group shrink-0">
+        <div class="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-stone-900 text-amber-400 flex items-center justify-center transition group-hover:rotate-12 shrink-0">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
+            <path d="M12 2C7.58 2 4 5.58 4 10c0 2.21.9 4.21 2.35 5.65.3.3.65.65.65 1.05v1.3c0 .55.45 1 1 1h1v1c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-1h1c.55 0 1-.45 1-1v-1.3c0-.4.35-.75.65-1.05C20.1 14.21 21 12.21 21 10c0-4.42-3.58-8-8-8zm-3 8a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0zm6 0a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0z"/>
+          </svg>
+        </div>
+        <span class="font-nautical font-black text-xs sm:text-sm tracking-tight">Captain Reztroid</span>
+      </button>
+
+      <div class="flex items-center gap-1 sm:gap-1.5 shrink-0">
+        <button id="btn-audio-top" onclick="toggleAudio()" class="pill-surface px-2.5 sm:px-3 py-1.5 rounded-full flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold transition hover:scale-105 active:scale-95">
+          <div id="bgm-eq" class="flex items-end gap-0.5 h-3 text-amber-600">
+            <span class="eq-bar eq-bar-1"></span>
+            <span class="eq-bar eq-bar-2"></span>
+            <span class="eq-bar eq-bar-3"></span>
+          </div>
+          <span id="audio-label">PotC Theme</span>
+        </button>
+
+        <button id="btn-theme" onclick="toggleSkyTheme()" title="Siang / Malam" class="w-8 h-8 sm:w-9 sm:h-9 rounded-full pill-surface flex items-center justify-center hover:scale-105 active:scale-95 transition">
+          <i data-lucide="moon" id="theme-icon" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+        </button>
+
+        <button onclick="toggleHelpModal()" title="Panduan" class="w-8 h-8 sm:w-9 sm:h-9 rounded-full pill-surface flex items-center justify-center hover:scale-105 active:scale-95 transition">
+          <i data-lucide="help-circle" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
+        </button>
+      </div>
+    </div>
+
+    <nav class="pointer-events-auto pill-surface p-1 rounded-full flex items-center justify-center gap-0.5 sm:gap-1 text-[11px] sm:text-xs font-semibold overflow-x-auto no-scrollbar max-w-full">
+      <button onclick="sailToIsland('haven', true)" class="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full hover:bg-black/5 transition whitespace-nowrap" data-nav="haven">About</button>
+      <button onclick="sailToIsland('vault', true)" class="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full hover:bg-black/5 transition whitespace-nowrap" data-nav="vault">Pricelist</button>
+      <button onclick="sailToIsland('log', true)" class="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full hover:bg-black/5 transition whitespace-nowrap" data-nav="log">Testimoni</button>
+      <button onclick="sailToIsland('signal', true)" class="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full hover:bg-black/5 transition whitespace-nowrap" data-nav="signal">Order & Kontak</button>
+    </nav>
+
+    <!-- Ship Status Hint -->
+    <div id="ship-status" class="pointer-events-none transition-opacity duration-200 px-3 flex justify-center w-full">
+      <div class="pill-surface px-3 py-0.5 sm:py-1 rounded-full flex items-center gap-1.5 text-[10px] sm:text-xs font-medium opacity-95 max-w-full truncate shadow-sm">
+        <span class="w-1.5 h-1.5 rounded-full bg-amber-600 animate-pulse shrink-0"></span>
+        <span id="ship-status-text" class="truncate">Klik pulau atau air laut untuk berlayar</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Left Bottom Utility Stack -->
+  <div class="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] sm:bottom-6 left-3 sm:left-6 z-20 flex flex-col gap-2 pointer-events-auto">
+    <button onclick="fireBroadsideCannons()" title="Tembak Meriam (Spacebar)" class="w-9 h-9 sm:w-10 sm:h-10 rounded-full pill-surface flex items-center justify-center hover:scale-105 active:scale-95 transition text-amber-600 shadow-md">
+      <i data-lucide="flame" class="w-4 h-4"></i>
+    </button>
+    <button id="btn-cam-mode" onclick="toggleCameraFollow()" title="Mode Kamera" class="w-9 h-9 sm:w-auto sm:px-3.5 sm:py-2 rounded-full pill-surface text-xs font-semibold flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition shadow-md">
+      <span id="cam-mode-dot" class="w-2 h-2 rounded-full bg-emerald-600 shrink-0"></span>
+      <span id="cam-mode-text" class="hidden sm:inline">Follow Ship</span>
+    </button>
+  </div>
+
+  <!-- Mobile On-Screen Steering Touch Controls (Visible on Mobile only) -->
+  <div class="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-3 z-20 flex flex-col items-center gap-1.5 pointer-events-auto sm:hidden">
+    <button id="btn-mobile-forward" class="w-11 h-11 rounded-full pill-surface flex items-center justify-center active:scale-90 shadow-lg text-stone-800">
+      <i data-lucide="arrow-up" class="w-5 h-5"></i>
+    </button>
+    <div class="flex items-center gap-2">
+      <button id="btn-mobile-left" class="w-11 h-11 rounded-full pill-surface flex items-center justify-center active:scale-90 shadow-lg text-stone-800">
+        <i data-lucide="arrow-left" class="w-5 h-5"></i>
+      </button>
+      <button id="btn-mobile-right" class="w-11 h-11 rounded-full pill-surface flex items-center justify-center active:scale-90 shadow-lg text-stone-800">
+        <i data-lucide="arrow-right" class="w-5 h-5"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Floating Island Preview Card -->
+  <div id="island-preview-card" class="fixed bottom-[calc(3.8rem+env(safe-area-inset-bottom))] sm:bottom-20 inset-x-0 z-30 flex justify-center px-3 pointer-events-none transition-all duration-200 opacity-0 translate-y-4">
+    <div class="pointer-events-auto pill-surface w-full max-w-md rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 shadow-2xl relative">
+      <button onclick="hidePreviewCard()" class="absolute top-3 right-3 w-7 h-7 rounded-full bg-stone-500/20 hover:bg-stone-500/30 flex items-center justify-center transition active:scale-90" title="Tutup">
+        <i data-lucide="x" class="w-3.5 h-3.5"></i>
+      </button>
+
+      <div class="flex items-center gap-2.5 pr-7">
+        <div id="preview-icon" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl sm:rounded-2xl bg-stone-900 text-amber-400 flex items-center justify-center text-sm sm:text-base shrink-0">
+          🏴‍☠️
+        </div>
+        <div class="min-w-0">
+          <div class="flex items-center gap-1.5">
+            <span id="preview-badge" class="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-600">Markas Utama</span>
+          </div>
+          <h3 id="preview-title" class="font-nautical text-lg sm:text-2xl font-black leading-tight truncate mt-0.5 tracking-tight">About Reztroid</h3>
+        </div>
+      </div>
+
+      <p id="preview-desc" class="text-xs sm:text-sm font-medium opacity-85 mt-2 leading-relaxed line-clamp-2 sm:line-clamp-3">
+        Selamat datang di pelabuhan utama Captain Reztroid. Lihat profil lengkap, layanan unggulan, dan cara kerja kami.
+      </p>
+
+      <div id="preview-highlights" class="flex flex-wrap gap-1 sm:gap-1.5 mt-2.5"></div>
+
+      <div class="grid grid-cols-2 gap-2 mt-3 pt-2.5 border-t border-stone-400/20">
+        <button onclick="openCurrentIslandModal()" class="py-2 sm:py-2.5 px-3 rounded-xl bg-stone-500/15 hover:bg-stone-500/25 font-bold text-xs flex items-center justify-center gap-1.5 transition active:scale-95">
+          <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
+          <span>Lihat Detail</span>
+        </button>
+        <a id="preview-external-link" href="https://wa.me/6281299961001" target="_blank" rel="noopener noreferrer" class="py-2 sm:py-2.5 px-3 rounded-xl pill-dark font-bold text-xs flex items-center justify-center gap-1.5 transition hover:opacity-90 active:scale-95">
+          <span id="preview-link-label">Buka Link</span>
+          <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Center Mooring Bar -->
+  <div class="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] sm:bottom-5 inset-x-0 z-20 flex justify-center items-center pointer-events-none px-14 sm:px-4">
+    <div class="pointer-events-auto pill-surface p-1 pl-3 sm:p-1.5 sm:pl-4 rounded-full flex items-center gap-2 sm:gap-3 max-w-full shadow-md">
+      <span id="active-island-name" class="font-nautical text-xs sm:text-sm font-black tracking-tight truncate max-w-[125px] sm:max-w-none">About · Reztroid</span>
+      <button id="btn-moor" onclick="openCurrentIslandModal()" class="pill-dark text-xs sm:text-sm font-bold px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full transition hover:opacity-90 active:scale-95 flex items-center gap-1.5 shrink-0">
+        <span>Buka Pulau</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Full Island Detail Modal (Drawer) -->
+  <div id="island-modal" class="fixed inset-0 z-50 pointer-events-none flex items-end sm:items-center justify-center p-0 sm:p-6 opacity-0 transition-opacity duration-300">
+    <div onclick="closeIslandModal()" class="absolute inset-0 bg-black/55 backdrop-blur-xs"></div>
+    <div id="island-modal-panel" class="relative w-full max-w-2xl max-h-[86dvh] bg-[#fbf8f1] text-stone-900 rounded-t-3xl sm:rounded-3xl shadow-2xl border border-stone-200/80 overflow-hidden flex flex-col transform translate-y-8 transition-transform duration-300">
+      <div class="px-5 pt-5 pb-4 sm:px-7 border-b border-stone-200/70 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-2.5">
+          <span id="modal-tag" class="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-800">Kepulauan Reztroid</span>
+        </div>
+        <button onclick="closeIslandModal()" class="w-8 h-8 rounded-full bg-stone-200/70 hover:bg-stone-300/80 flex items-center justify-center text-stone-700 transition">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <div id="modal-body" class="p-5 sm:p-7 overflow-y-auto no-scrollbar space-y-5 text-sm leading-relaxed"></div>
+    </div>
+  </div>
+
+  <!-- Help Modal -->
+  <div id="help-modal" class="fixed inset-0 z-50 pointer-events-none flex items-center justify-center p-4 opacity-0 transition-opacity duration-200">
+    <div onclick="toggleHelpModal()" class="absolute inset-0 bg-black/50 backdrop-blur-xs"></div>
+    <div class="relative w-full max-w-sm bg-[#fbf8f1] text-stone-900 rounded-3xl p-6 shadow-2xl border border-stone-200">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-nautical text-xl font-black tracking-tight">Panduan Pelayaran</h3>
+        <button onclick="toggleHelpModal()" class="w-8 h-8 rounded-full bg-stone-200/70 flex items-center justify-center">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <div class="space-y-2.5 text-xs text-stone-600">
+        <div class="flex items-center justify-between py-2 border-b border-stone-200">
+          <span class="font-semibold text-stone-800">Klik Pulau / Nama</span>
+          <span class="px-2 py-1 bg-stone-200/80 rounded font-mono text-stone-900">Buka Info & Link</span>
+        </div>
+        <div class="flex items-center justify-between py-2 border-b border-stone-200">
+          <span class="font-semibold text-stone-800">Klik Air Laut</span>
+          <span class="px-2 py-1 bg-stone-200/80 rounded font-mono text-stone-900">Berlayar ke Titik</span>
+        </div>
+        <div class="flex items-center justify-between py-2 border-b border-stone-200">
+          <span class="font-semibold text-stone-800">Kemudi (Desktop / HP)</span>
+          <span class="px-2 py-1 bg-stone-200/80 rounded font-mono text-stone-900">WASD / Tombol Layar</span>
+        </div>
+        <div class="flex items-center justify-between py-2 border-b border-stone-200">
+          <span class="font-semibold text-stone-800">Tembak Meriam</span>
+          <span class="px-2 py-1 bg-stone-200/80 rounded font-mono text-stone-900">Spacebar / Ikon Api</span>
+        </div>
+        <div class="flex items-center justify-between py-2">
+          <span class="font-semibold text-stone-800">Putar Kamera 360°</span>
+          <span class="px-2 py-1 bg-stone-200/80 rounded font-mono text-stone-900">Geser Layar / Mouse</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ============================================================================
+    // KONFIGURASI LINK & KONTEN CAPTAIN REZTROID
+    // ============================================================================
+    const REZTROID_CONFIG = {
+      links: {
+        haven: 'https://instagram.com/heyreztroid/',
+        vault: 'https://wa.me/6281299961001?text=Halo%20Captain%20Reztroid,%20saya%20ingin%20tanya%20pricelist',
+        log: 'https://instagram.com/heyreztroid/',
+        signal: 'https://wa.me/6281299961001?text=Halo%20Captain%20Reztroid,%20saya%20ingin%20order'
+      }
+    };
+
+    const PIRATE_ISLANDS = {
+      haven: {
+        id: 'haven',
+        name: 'About · Reztroid',
+        badge: 'Markas Utama',
+        icon: '🏴‍☠️',
+        shortTitle: 'About Reztroid',
+        shortDesc: 'Markas utama Captain Reztroid. Kenali layanan kreatif, kualitas pengerjaan, dan keunggulan armada kami.',
+        highlights: ['⚡ Proses Cepat', '💎 Kualitas Premium', '🛡️ Bergaransi'],
+        linkLabel: 'Profil Instagram',
+        externalUrl: REZTROID_CONFIG.links.haven,
+        html: `
+          <div class="space-y-5">
+            <div>
+              <h2 class="font-nautical text-2xl sm:text-3xl font-black text-stone-900 tracking-tight">Captain Reztroid</h2>
+              <p class="text-stone-500 text-xs mt-1 font-medium">Digital Creative & Trusted Service Armada</p>
+            </div>
+            <p class="text-stone-700 leading-relaxed">
+              Selamat datang di pelabuhan resmi <strong>Captain Reztroid</strong>. Kami menyediakan layanan digital berkualitas tinggi dengan pengerjaan cepat, transparan, dan bergaransi penuh bagi setiap klien.
+            </p>
+            <div class="grid grid-cols-3 gap-2.5 pt-1">
+              <div class="p-3.5 rounded-2xl bg-stone-100 border border-stone-200/70 text-center">
+                <div class="font-nautical text-xl sm:text-2xl font-black text-stone-900">500+</div>
+                <div class="text-[10px] uppercase tracking-wider text-stone-500 mt-0.5 font-semibold">Order Selesai</div>
+              </div>
+              <div class="p-3.5 rounded-2xl bg-stone-100 border border-stone-200/70 text-center">
+                <div class="font-nautical text-xl sm:text-2xl font-black text-amber-700">4.9★</div>
+                <div class="text-[10px] uppercase tracking-wider text-stone-500 mt-0.5 font-semibold">Rating Klien</div>
+              </div>
+              <div class="p-3.5 rounded-2xl bg-stone-100 border border-stone-200/70 text-center">
+                <div class="font-nautical text-xl sm:text-2xl font-black text-stone-900">24/7</div>
+                <div class="text-[10px] uppercase tracking-wider text-stone-500 mt-0.5 font-semibold">Fast Respon</div>
+              </div>
+            </div>
+            <div class="pt-2 flex flex-wrap gap-2.5">
+              <button onclick="closeIslandModal(); sailToIsland('vault', true);" class="px-4 py-2.5 rounded-full bg-stone-900 text-white text-xs font-bold hover:opacity-90 transition">
+                Lihat Pricelist →
+              </button>
+              <a href="${REZTROID_CONFIG.links.haven}" target="_blank" rel="noopener noreferrer" class="px-4 py-2.5 rounded-full bg-stone-200 text-stone-800 text-xs font-bold hover:bg-stone-300 transition">
+                Kunjungi Instagram ↗
+              </a>
+            </div>
+          </div>
+        `
+      },
+      vault: {
+        id: 'vault',
+        name: 'Pricelist · Katalog',
+        badge: 'Katalog Harga',
+        icon: '💰',
+        shortTitle: 'Pricelist & Paket',
+        shortDesc: 'Daftar harga lengkap layanan Captain Reztroid. Pilih paket sesuai kebutuhanmu dengan harga transparan.',
+        highlights: ['📦 Paket Basic', '🔥 Paket Pro Fleet', '👑 Custom Order'],
+        linkLabel: 'Tanya / Order WA',
+        externalUrl: REZTROID_CONFIG.links.vault,
+        html: `
+          <div class="space-y-4">
+            <div>
+              <h2 class="font-nautical text-2xl sm:text-3xl font-black text-stone-900 tracking-tight">Pricelist Layanan</h2>
+              <p class="text-stone-500 text-xs mt-1 font-medium">Pilih paket layanan terbaik dari Captain Reztroid</p>
+            </div>
+            <div class="space-y-3">
+              <div class="p-4 rounded-2xl bg-white border border-stone-200 flex items-center justify-between gap-3">
+                <div>
+                  <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-stone-100 text-stone-600">Starter</span>
+                  <h4 class="font-bold text-stone-900 text-base mt-1">Paket Basic Corsair</h4>
+                  <p class="text-xs text-stone-500 mt-0.5">Pengerjaan reguler, 2x revisi minor, file siap pakai.</p>
+                </div>
+                <div class="text-right shrink-0">
+                  <div class="font-nautical text-xl font-black text-amber-700">Rp 50K</div>
+                  <a href="${REZTROID_CONFIG.links.vault}" target="_blank" class="inline-block mt-1 text-[11px] font-bold text-stone-900 underline">Pesan →</a>
+                </div>
+              </div>
+
+              <div class="p-4 rounded-2xl bg-amber-500/10 border-2 border-amber-600/40 flex items-center justify-between gap-3">
+                <div>
+                  <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-600 text-white">Best Seller</span>
+                  <h4 class="font-bold text-stone-900 text-base mt-1">Paket Captain Fleet</h4>
+                  <p class="text-xs text-stone-600 mt-0.5">Prioritas ekspres, full garansi & revisi, bonus eksklusif.</p>
+                </div>
+                <div class="text-right shrink-0">
+                  <div class="font-nautical text-xl font-black text-amber-800">Rp 150K</div>
+                  <a href="${REZTROID_CONFIG.links.vault}" target="_blank" class="inline-block mt-1 text-[11px] font-bold text-amber-900 underline">Pesan →</a>
+                </div>
+              </div>
+
+              <div class="p-4 rounded-2xl bg-white border border-stone-200 flex items-center justify-between gap-3">
+                <div>
+                  <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-stone-900 text-amber-400">VIP Custom</span>
+                  <h4 class="font-bold text-stone-900 text-base mt-1">Paket Admiral Full Custom</h4>
+                  <p class="text-xs text-stone-500 mt-0.5">Spesifikasi khusus sesuai request dari awal hingga tuntas.</p>
+                </div>
+                <div class="text-right shrink-0">
+                  <div class="font-nautical text-xl font-black text-stone-900">Rp 300K+</div>
+                  <a href="${REZTROID_CONFIG.links.vault}" target="_blank" class="inline-block mt-1 text-[11px] font-bold text-stone-900 underline">Pesan →</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        `
+      },
+      log: {
+        id: 'log',
+        name: 'Testimoni · Review',
+        badge: 'Bukti & Review',
+        icon: '⭐',
+        shortTitle: 'Testimoni Pelanggan',
+        shortDesc: 'Kumpulan ulasan asli dan bukti kepuasan pelanggan yang telah berlayar bersama Captain Reztroid.',
+        highlights: ['⭐ 100% Trusted', '💬 Review Asli', '📸 Bukti Transaksi'],
+        linkLabel: 'Lihat Bukti Lengkap',
+        externalUrl: REZTROID_CONFIG.links.log,
+        html: `
+          <div class="space-y-4">
+            <div>
+              <h2 class="font-nautical text-2xl sm:text-3xl font-black text-stone-900 tracking-tight">Testimoni Pelanggan</h2>
+              <p class="text-stone-500 text-xs mt-1 font-medium">Apa kata mereka tentang layanan Captain Reztroid</p>
+            </div>
+            <div class="space-y-3">
+              <div class="p-4 rounded-2xl bg-white border border-stone-200">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-stone-900 text-xs">Raka Pratama</span>
+                  <span class="text-amber-500 text-xs">★★★★★</span>
+                </div>
+                <p class="text-xs text-stone-600 mt-1.5 leading-relaxed">"Gila sih pengerjaan cepet banget, admin ramah dan hasilnya jauh di atas ekspektasi. Recommended banget sama Captain Reztroid!"</p>
+              </div>
+              <div class="p-4 rounded-2xl bg-white border border-stone-200">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-stone-900 text-xs">Nadia K.</span>
+                  <span class="text-amber-500 text-xs">★★★★★</span>
+                </div>
+                <p class="text-xs text-stone-600 mt-1.5 leading-relaxed">"Udah langganan 3 kali di sini nggak pernah kecewa. Harga terjangkau tapi kualitasnya beneran kelas kapten."</p>
+              </div>
+              <div class="p-4 rounded-2xl bg-white border border-stone-200">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-stone-900 text-xs">Dimas Saputra</span>
+                  <span class="text-amber-500 text-xs">★★★★★</span>
+                </div>
+                <p class="text-xs text-stone-600 mt-1.5 leading-relaxed">"Fast respon meskipun chat malam-malam. Revisi langsung dikerjain saat itu juga. Mantap Reztroid!"</p>
+              </div>
+            </div>
+          </div>
+        `
+      },
+      signal: {
+        id: 'signal',
+        name: 'Order · Kontak',
+        badge: 'Jalur Cepat',
+        icon: '🧭',
+        shortTitle: 'Order & Kontak',
+        shortDesc: 'Siap memesan atau ingin konsultasi gratis dulu? Hubungi Captain Reztroid langsung lewat WhatsApp atau sosial media.',
+        highlights: ['📱 WhatsApp Aktif', '📸 DM Instagram', '⚡ Respon Instan'],
+        linkLabel: 'Chat WhatsApp',
+        externalUrl: REZTROID_CONFIG.links.signal,
+        html: `
+          <div class="space-y-4">
+            <div>
+              <h2 class="font-nautical text-2xl sm:text-3xl font-black text-stone-900 tracking-tight">Hubungi Captain Reztroid</h2>
+              <p class="text-stone-500 text-xs mt-1 font-medium">Klik salah satu jalur komunikasi resmi di bawah ini</p>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <a href="${REZTROID_CONFIG.links.signal}" target="_blank" rel="noopener noreferrer" class="p-4 rounded-2xl bg-emerald-600 text-white flex items-center justify-between hover:opacity-95 transition">
+                <div>
+                  <div class="text-[10px] uppercase tracking-wider opacity-80 font-bold">Jalur Utama</div>
+                  <div class="font-bold text-base mt-0.5">WhatsApp Order</div>
+                </div>
+                <i data-lucide="message-circle" class="w-5 h-5"></i>
+              </a>
+              <a href="${REZTROID_CONFIG.links.haven}" target="_blank" rel="noopener noreferrer" class="p-4 rounded-2xl bg-stone-900 text-white flex items-center justify-between hover:opacity-95 transition">
+                <div>
+                  <div class="text-[10px] uppercase tracking-wider opacity-80 font-bold">Katalog & Update</div>
+                  <div class="font-bold text-base mt-0.5">Instagram Resmi</div>
+                </div>
+                <i data-lucide="instagram" class="w-5 h-5"></i>
+              </a>
+            </div>
+          </div>
+        `
+      }
+    };
+
+    // ============================================================================
+    // THREE.JS SCENE SETUP (RETINA HD & FULL MOBILE FIT)
+    // ============================================================================
+    const canvas = document.getElementById('webgl-canvas');
+    const scene = new THREE.Scene();
+
+    function getViewportDimensions() {
+      const w = window.visualViewport ? window.visualViewport.width : window.innerWidth;
+      const h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      return { width: w, height: h, isMobile: w < 768 };
+    }
+
+    const vp = getViewportDimensions();
+    const isMobileScreen = vp.isMobile;
+    const camera = new THREE.PerspectiveCamera(
+      isMobileScreen ? 58 : 42,
+      vp.width / vp.height,
+      0.1,
+      1000
+    );
+    if (isMobileScreen) {
+      camera.position.set(-4.4, 15.2, 29.0);
+    } else {
+      camera.position.set(-4.4, 8.2, 18.5);
+    }
+
+    const renderer = new THREE.WebGLRenderer({
+      canvas: canvas,
+      antialias: true,
+      powerPreference: 'high-performance'
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 2, 2.5));
+    renderer.setSize(vp.width, vp.height, false);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    const THEMES = {
+      day: {
+        skyTop: new THREE.Color('#d6b898'),
+        skyHorizon: new THREE.Color('#ede2d3'),
+        fog: new THREE.Color('#e4d7c5'),
+        waterColor: new THREE.Color('#257586'),
+        ambientColor: new THREE.Color('#fff5e6'),
+        ambientIntensity: 0.78,
+        sunColor: new THREE.Color('#ffe0b2'),
+        sunIntensity: 1.32
+      },
+      night: {
+        skyTop: new THREE.Color('#09111e'),
+        skyHorizon: new THREE.Color('#132238'),
+        fog: new THREE.Color('#101d30'),
+        waterColor: new THREE.Color('#0c293a'),
+        ambientColor: new THREE.Color('#4a6fa5'),
+        ambientIntensity: 0.62,
+        sunColor: new THREE.Color('#7ca5d8'),
+        sunIntensity: 0.8
+      }
+    };
+
+    let isNightMode = false;
+    scene.background = THEMES.day.skyHorizon.clone();
+    scene.fog = new THREE.FogExp2(THEMES.day.fog.getHex(), 0.0105);
+
+    const hemiLight = new THREE.HemisphereLight(0xfff8ee, 0x3b6e75, 0.55);
+    scene.add(hemiLight);
+
+    const ambientLight = new THREE.AmbientLight(THEMES.day.ambientColor, THEMES.day.ambientIntensity);
+    scene.add(ambientLight);
+
+    const sunLight = new THREE.DirectionalLight(THEMES.day.sunColor, THEMES.day.sunIntensity);
+    sunLight.position.set(24, 38, 22);
+    sunLight.castShadow = true;
+    const shadowRes = isMobileScreen ? 1024 : 2048;
+    sunLight.shadow.mapSize.width = shadowRes;
+    sunLight.shadow.mapSize.height = shadowRes;
+    sunLight.shadow.bias = -0.0005;
+    scene.add(sunLight);
+
+    // ============================================================================
+    // MATERIALS & JOLLY ROGER TEXTURE
+    // ============================================================================
+    const materials = {
+      sand: new THREE.MeshStandardMaterial({ color: 0xe8d1a7, roughness: 0.88, flatShading: true }),
+      sandWet: new THREE.MeshStandardMaterial({ color: 0xcab084, roughness: 0.65, flatShading: true }),
+      grass: new THREE.MeshStandardMaterial({ color: 0x72964c, roughness: 0.82, flatShading: true }),
+      grassDark: new THREE.MeshStandardMaterial({ color: 0x577836, roughness: 0.85, flatShading: true }),
+      rock: new THREE.MeshStandardMaterial({ color: 0x78716a, roughness: 0.85, flatShading: true }),
+      rockDark: new THREE.MeshStandardMaterial({ color: 0x57534e, roughness: 0.9, flatShading: true }),
+      woodDark: new THREE.MeshStandardMaterial({ color: 0x452715, roughness: 0.78, flatShading: true }),
+      woodMid: new THREE.MeshStandardMaterial({ color: 0x633b22, roughness: 0.75, flatShading: true }),
+      woodLight: new THREE.MeshStandardMaterial({ color: 0x855534, roughness: 0.72, flatShading: true }),
+      gold: new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.45, roughness: 0.3, flatShading: true }),
+      iron: new THREE.MeshStandardMaterial({ color: 0x292524, metalness: 0.6, roughness: 0.45, flatShading: true }),
+      hullTrim: new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.5, flatShading: true }),
+      sailWhite: new THREE.MeshStandardMaterial({ color: 0xf7f4eb, roughness: 0.85, side: THREE.DoubleSide }),
+      skin: new THREE.MeshStandardMaterial({ color: 0xf1c27d, roughness: 0.6 }),
+      pirateRed: new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.7 }),
+      pirateBlue: new THREE.MeshStandardMaterial({ color: 0x1d4ed8, roughness: 0.7 }),
+      pirateBlack: new THREE.MeshStandardMaterial({ color: 0x1c1917, roughness: 0.75 }),
+      houseWall: new THREE.MeshStandardMaterial({ color: 0xf5ecd9, roughness: 0.85 }),
+      houseRoof: new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.75, flatShading: true }),
+      windowGlow: new THREE.MeshBasicMaterial({ color: 0xffd580 }),
+      lanternGlow: new THREE.MeshBasicMaterial({ color: 0xffae34 }),
+      cloud: new THREE.MeshStandardMaterial({ color: 0xfaf6f0, roughness: 0.95, flatShading: true }),
+      lagoon: new THREE.MeshBasicMaterial({ color: 0x4cc3c9, transparent: true, opacity: 0.42 }),
+      foamRing: new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.38, side: THREE.DoubleSide }),
+      rope: new THREE.LineBasicMaterial({ color: 0x3b2313, transparent: true, opacity: 0.65 })
+    };
+
+    function createJollyRogerTexture() {
+      const c = document.createElement('canvas');
+      c.width = 512;
+      c.height = 512;
+      const ctx = c.getContext('2d');
+
+      ctx.fillStyle = '#141413';
+      ctx.fillRect(0, 0, c.width, c.height);
+
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 12;
+      ctx.strokeRect(18, 18, c.width - 36, c.height - 36);
+
+      ctx.save();
+      ctx.translate(c.width / 2, c.height / 2);
+
+      ctx.strokeStyle = '#e5e7eb';
+      ctx.fillStyle = '#e5e7eb';
+      ctx.lineWidth = 22;
+      ctx.lineCap = 'round';
+
+      [-0.6, 0.6].forEach(angle => {
+        ctx.save();
+        ctx.rotate(angle);
+        ctx.beginPath();
+        ctx.moveTo(-130, 0);
+        ctx.lineTo(130, 0);
+        ctx.stroke();
+        [-130, 130].forEach(endX => {
+          ctx.beginPath();
+          ctx.arc(endX, -14, 16, 0, Math.PI * 2);
+          ctx.arc(endX, 14, 16, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        ctx.restore();
+      });
+
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(0, -22, 68, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.roundRect(-38, 22, 76, 46, 12);
+      ctx.fill();
+
+      ctx.fillStyle = '#dc2626';
+      ctx.beginPath();
+      ctx.arc(0, -28, 70, Math.PI * 1.05, Math.PI * 1.95);
+      ctx.fill();
+
+      ctx.fillStyle = '#141413';
+      ctx.beginPath();
+      ctx.arc(-24, -16, 15, 0, Math.PI * 2);
+      ctx.arc(24, -16, 15, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(0, 2);
+      ctx.lineTo(-10, 18);
+      ctx.lineTo(10, 18);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = '#141413';
+      ctx.lineWidth = 5;
+      [-18, 0, 18].forEach(tx => {
+        ctx.beginPath();
+        ctx.moveTo(tx, 38);
+        ctx.lineTo(tx, 62);
+        ctx.stroke();
+      });
+
+      ctx.restore();
+      return c;
+    }
+
+    const flagCanvas = createJollyRogerTexture();
+    const flagTexture = new THREE.CanvasTexture(flagCanvas);
+    flagTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    materials.sailJollyRoger = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      map: flagTexture,
+      roughness: 0.8,
+      side: THREE.DoubleSide
+    });
+
+    // ============================================================================
+    // OCEAN WATER MESH & WAVE FUNCTION
+    // ============================================================================
+    const waterSegs = isMobileScreen ? 32 : 48;
+    const waterGeo = new THREE.PlaneGeometry(240, 240, waterSegs, waterSegs);
+    waterGeo.rotateX(-Math.PI / 2);
+    const waterPosAttr = waterGeo.attributes.position;
+    const waterOrigCoords = [];
+    for (let i = 0; i < waterPosAttr.count; i++) {
+      waterOrigCoords.push({
+        x: waterPosAttr.getX(i),
+        z: waterPosAttr.getZ(i)
+      });
+    }
+
+    const waterMat = new THREE.MeshStandardMaterial({
+      color: THEMES.day.waterColor,
+      roughness: 0.42,
+      metalness: 0.12,
+      flatShading: true
+    });
+    const waterMesh = new THREE.Mesh(waterGeo, waterMat);
+    waterMesh.receiveShadow = true;
+    scene.add(waterMesh);
+
+    function getWaveHeightAt(x, z, time) {
+      return (
+        Math.sin(x * 0.18 + time * 1.6) * 0.12 +
+        Math.cos(z * 0.15 + time * 1.3) * 0.1
+      );
+    }
+
+    // ============================================================================
+    // DETAILED ISLAND BUILDERS
+    // ============================================================================
+    const islandPositions3D = {
+      haven: new THREE.Vector3(-4.5, 2.2, 1.5),
+      vault: new THREE.Vector3(-19.5, 2.2, -9.5),
+      log: new THREE.Vector3(11.5, 2.2, -10.5),
+      signal: new THREE.Vector3(10.5, 2.2, 11.5)
+    };
+
+    const islandDockTargets = {
+      haven: { x: -4.5, z: 6.5, rot: -0.3 },
+      vault: { x: -15.5, z: -5.2, rot: 0.65 },
+      log: { x: 8.2, z: -6.0, rot: -0.6 },
+      signal: { x: 6.8, z: 8.5, rot: -2.2 }
+    };
+
+    const clickableIslandObjects = [];
+    const animatedProps = [];
+    const seaBirds = [];
+    const skyClouds = [];
+
+    function enableShadowRecursive(obj) {
+      obj.traverse(child => {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+    }
+
+    function createMiniCharacter(shirtMat, hasHat = false, hasSword = false) {
+      const charGroup = new THREE.Group();
+      const legs = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.12, 0.2, 7), materials.pirateBlack);
+      legs.position.y = 0.1;
+      charGroup.add(legs);
+
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.34, 8), shirtMat);
+      body.position.y = 0.34;
+      charGroup.add(body);
+
+      const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.155, 0.155, 0.06, 8), materials.woodDark);
+      belt.position.y = 0.24;
+      charGroup.add(belt);
+
+      [-0.18, 0.18].forEach((ax, idx) => {
+        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.04, 0.26, 6), shirtMat);
+        arm.position.set(ax, 0.34, 0);
+        arm.rotation.z = idx === 0 ? 0.25 : -0.25;
+        charGroup.add(arm);
+      });
+
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.135, 10, 10), materials.skin);
+      head.position.y = 0.6;
+      charGroup.add(head);
+
+      [-0.045, 0.045].forEach(ex => {
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.02, 6, 6), materials.pirateBlack);
+        eye.position.set(ex, 0.62, 0.12);
+        charGroup.add(eye);
+      });
+
+      if (hasHat) {
+        const hatBrim = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.05, 3), materials.pirateBlack);
+        hatBrim.position.y = 0.72;
+        charGroup.add(hatBrim);
+        const hatCrown = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.12, 7), materials.pirateRed);
+        hatCrown.position.y = 0.76;
+        charGroup.add(hatCrown);
+      }
+
+      if (hasSword) {
+        const sword = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.36, 0.06), materials.gold);
+        sword.position.set(0.24, 0.42, 0.12);
+        sword.rotation.x = 0.6;
+        charGroup.add(sword);
+      }
+
+      enableShadowRecursive(charGroup);
+      return charGroup;
+    }
+
+    function createTreasureChest(isOpen = false) {
+      const chest = new THREE.Group();
+      const base = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.32, 0.42), materials.woodDark);
+      base.position.y = 0.16;
+      chest.add(base);
+
+      const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.21, 0.6, 8, 1, false, 0, Math.PI), materials.woodMid);
+      lid.rotation.z = Math.PI / 2;
+      lid.position.set(0, 0.32, isOpen ? -0.08 : 0);
+      if (isOpen) lid.rotation.x = -0.55;
+      chest.add(lid);
+
+      [-0.22, 0.22].forEach(bx => {
+        const band = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.34, 0.44), materials.gold);
+        band.position.set(bx, 0.17, 0);
+        chest.add(band);
+      });
+
+      const lock = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.16, 0.45), materials.gold);
+      lock.position.y = 0.24;
+      chest.add(lock);
+
+      if (isOpen) {
+        const goldInside = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 0.32), materials.gold);
+        goldInside.position.y = 0.31;
+        chest.add(goldInside);
+      }
+
+      enableShadowRecursive(chest);
+      return chest;
+    }
+
+    function createWoodBarrel() {
+      const barrel = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.42, 9), materials.woodMid);
+      body.position.y = 0.21;
+      barrel.add(body);
+      [0.1, 0.32].forEach(hy => {
+        const hoop = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.04, 9), materials.iron);
+        hoop.position.y = hy;
+        barrel.add(hoop);
+      });
+      enableShadowRecursive(barrel);
+      return barrel;
+    }
+
+    function createPalmTree(scale = 1) {
+      const tree = new THREE.Group();
+      const segments = 5;
+      for (let i = 0; i < segments; i++) {
+        const rTop = 0.16 - i * 0.018;
+        const rBot = 0.18 - i * 0.018;
+        const seg = new THREE.Mesh(new THREE.CylinderGeometry(rTop, rBot, 0.42, 7), i % 2 === 0 ? materials.woodLight : materials.woodMid);
+        seg.position.set(Math.sin(i * 0.25) * 0.18, 0.2 + i * 0.36, 0);
+        seg.rotation.z = -i * 0.07;
+        tree.add(seg);
+      }
+
+      const topPos = new THREE.Vector3(Math.sin(4 * 0.25) * 0.18, 1.9, 0);
+
+      for (let c = 0; c < 3; c++) {
+        const coco = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 6), materials.woodDark);
+        const angle = (c / 3) * Math.PI * 2;
+        coco.position.set(topPos.x + Math.cos(angle) * 0.12, topPos.y - 0.05, Math.sin(angle) * 0.12);
+        tree.add(coco);
+      }
+
+      for (let f = 0; f < 6; f++) {
+        const frondGroup = new THREE.Group();
+        frondGroup.position.copy(topPos);
+        frondGroup.rotation.y = (f / 6) * Math.PI * 2;
+
+        const leaf = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.06, 1.15), f % 2 === 0 ? materials.grass : materials.grassDark);
+        leaf.position.set(0, 0.05, 0.55);
+        leaf.rotation.x = 0.38;
+        frondGroup.add(leaf);
+        tree.add(frondGroup);
+      }
+
+      tree.scale.setScalar(scale);
+      enableShadowRecursive(tree);
+      return tree;
+    }
+
+    function createTavernHouse() {
+      const house = new THREE.Group();
+      const found = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.22, 1.45), materials.rock);
+      found.position.y = 0.11;
+      house.add(found);
+
+      const walls = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.15, 1.3), materials.houseWall);
+      walls.position.y = 0.78;
+      house.add(walls);
+
+      [[-0.8, -0.65], [0.8, -0.65], [-0.8, 0.65], [0.8, 0.65]].forEach(([px, pz]) => {
+        const beam = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.18, 0.1), materials.woodDark);
+        beam.position.set(px, 0.78, pz);
+        house.add(beam);
+      });
+
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(1.42, 0.95, 4), materials.houseRoof);
+      roof.position.y = 1.82;
+      roof.rotation.y = Math.PI / 4;
+      house.add(roof);
+
+      const chimney = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.75, 0.28), materials.rockDark);
+      chimney.position.set(0.45, 1.95, -0.25);
+      house.add(chimney);
+
+      const door = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.68, 0.08), materials.woodDark);
+      door.position.set(0, 0.55, 0.64);
+      house.add(door);
+
+      [-0.48, 0.48].forEach(wx => {
+        const winFrame = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.28, 0.08), materials.woodDark);
+        winFrame.position.set(wx, 0.85, 0.64);
+        house.add(winFrame);
+
+        const winPane = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.1), materials.windowGlow);
+        winPane.position.set(wx, 0.85, 0.64);
+        house.add(winPane);
+      });
+
+      const sideWin = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.28, 0.28), materials.windowGlow);
+      sideWin.position.set(0.8, 0.85, 0);
+      house.add(sideWin);
+
+      enableShadowRecursive(house);
+      return house;
+    }
+
+    function createDetailedDock(length = 2.6) {
+      const dockGroup = new THREE.Group();
+      const postPositions = [
+        [-0.48, -length * 0.35], [0.48, -length * 0.35],
+        [-0.48, 0], [0.48, 0],
+        [-0.48, length * 0.38], [0.48, length * 0.38]
+      ];
+      postPositions.forEach(([px, pz], idx) => {
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.09, 0.95, 7), materials.woodDark);
+        post.position.set(px, 0.18, pz);
+        dockGroup.add(post);
+
+        if (idx >= 4) {
+          const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.06, 7), materials.gold);
+          cap.position.set(px, 0.68, pz);
+          dockGroup.add(cap);
+        }
+      });
+
+      const numPlanks = 9;
+      for (let i = 0; i < numPlanks; i++) {
+        const plank = new THREE.Mesh(
+          new THREE.BoxGeometry(1.12, 0.08, (length / numPlanks) * 0.84),
+          i % 2 === 0 ? materials.woodLight : materials.woodMid
+        );
+        plank.position.set(0, 0.42, -length / 2 + (i + 0.5) * (length / numPlanks));
+        dockGroup.add(plank);
+      }
+
+      const lampPost = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 1.15, 6), materials.woodDark);
+      lampPost.position.set(0.48, 0.95, length * 0.38);
+      dockGroup.add(lampPost);
+
+      const lampArm = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.05, 0.05), materials.woodDark);
+      lampArm.position.set(0.35, 1.48, length * 0.38);
+      dockGroup.add(lampArm);
+
+      const lantern = new THREE.Mesh(new THREE.OctahedronGeometry(0.12, 0), materials.lanternGlow);
+      lantern.position.set(0.22, 1.34, length * 0.38);
+      dockGroup.add(lantern);
+
+      enableShadowRecursive(dockGroup);
+      return dockGroup;
+    }
+
+    function buildPirateIsland(id, x, z, radius) {
+      const group = new THREE.Group();
+      group.position.set(x, 0, z);
+
+      const lagoon = new THREE.Mesh(new THREE.CircleGeometry(radius * 1.52, 28), materials.lagoon);
+      lagoon.rotation.x = -Math.PI / 2;
+      lagoon.position.y = 0.03;
+      group.add(lagoon);
+
+      const foam = new THREE.Mesh(new THREE.RingGeometry(radius * 1.05, radius * 1.22, 28), materials.foamRing);
+      foam.rotation.x = -Math.PI / 2;
+      foam.position.y = 0.05;
+      group.add(foam);
+      animatedProps.push({ mesh: foam, baseY: 0.05, phase: x * 0.3, scalePulse: true });
+
+      const wetSand = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.98, radius * 1.18, 0.35, 14), materials.sandWet);
+      wetSand.position.y = 0.14;
+      wetSand.userData = { islandId: id };
+      clickableIslandObjects.push(wetSand);
+      group.add(wetSand);
+
+      const sandCone = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.85, radius * 1.02, 0.58, 14), materials.sand);
+      sandCone.position.y = 0.42;
+      sandCone.userData = { islandId: id };
+      clickableIslandObjects.push(sandCone);
+      group.add(sandCone);
+
+      const grassTop = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.72, radius * 0.84, 0.42, 14), materials.grass);
+      grassTop.position.y = 0.78;
+      grassTop.userData = { islandId: id };
+      clickableIslandObjects.push(grassTop);
+      group.add(grassTop);
+
+      const grassUpper = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.52, radius * 0.65, 0.26, 12), materials.grassDark);
+      grassUpper.position.set(-0.2, 1.02, -0.25);
+      grassUpper.userData = { islandId: id };
+      clickableIslandObjects.push(grassUpper);
+      group.add(grassUpper);
+
+      const dock = createDetailedDock(2.5);
+      dock.position.set(0, 0, radius * 1.02);
+      dock.traverse(c => {
+        if (c.isMesh) {
+          c.userData = { islandId: id };
+          clickableIslandObjects.push(c);
+        }
+      });
+      group.add(dock);
+
+      for (let r = 0; r < 5; r++) {
+        const ang = (r / 5) * Math.PI * 1.5 - 2.3;
+        const dist = radius * (0.78 + (r % 2) * 0.15);
+        const cliffRock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.32 + (r % 3) * 0.14, 0), r % 2 === 0 ? materials.rock : materials.rockDark);
+        cliffRock.position.set(Math.cos(ang) * dist, 0.55, Math.sin(ang) * dist);
+        cliffRock.rotation.set(r, r * 0.8, 0);
+        group.add(cliffRock);
+      }
+
+      if (id === 'haven') {
+        const house = createTavernHouse();
+        house.position.set(-0.35, 1.12, -0.35);
+        house.rotation.y = 0.18;
+        group.add(house);
+
+        const tree1 = createPalmTree(1.08);
+        tree1.position.set(1.45, 0.95, -0.55);
+        group.add(tree1);
+
+        const tree2 = createPalmTree(0.82);
+        tree2.position.set(-1.65, 0.92, 0.25);
+        tree2.rotation.y = 2.2;
+        group.add(tree2);
+
+        const villager = createMiniCharacter(materials.pirateRed, true, true);
+        villager.position.set(0.85, 0.98, 0.85);
+        group.add(villager);
+        animatedProps.push({ mesh: villager, baseY: 0.98, phase: 0.5 });
+
+        const chest = createTreasureChest(true);
+        chest.position.set(-1.15, 0.98, 0.78);
+        chest.rotation.y = 0.45;
+        group.add(chest);
+
+        const barrel1 = createWoodBarrel();
+        barrel1.position.set(0.65, 1.12, -0.2);
+        group.add(barrel1);
+      } else if (id === 'vault') {
+        const stonePlatform = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.6, 0.28, 8), materials.rock);
+        stonePlatform.position.set(-0.15, 1.22, -0.2);
+        group.add(stonePlatform);
+
+        const chestMain = createTreasureChest(true);
+        chestMain.scale.setScalar(1.42);
+        chestMain.position.set(-0.15, 1.36, -0.2);
+        group.add(chestMain);
+
+        [[-1.05, -0.35, 0.55], [0.75, -0.5, 0.42], [-0.7, 0.55, 0.35]].forEach(([gx, gz, gs]) => {
+          const goldPile = new THREE.Mesh(new THREE.DodecahedronGeometry(gs, 1), materials.gold);
+          goldPile.scale.y = 0.65;
+          goldPile.position.set(gx, 1.08, gz);
+          group.add(goldPile);
+        });
+
+        const guard = createMiniCharacter(materials.pirateBlue, true, true);
+        guard.position.set(0.95, 0.98, 0.65);
+        group.add(guard);
+        animatedProps.push({ mesh: guard, baseY: 0.98, phase: 1.7 });
+
+        const tree = createPalmTree(0.98);
+        tree.position.set(-1.35, 0.95, 0.65);
+        group.add(tree);
+
+        const tree2 = createPalmTree(0.76);
+        tree2.position.set(1.25, 0.95, -0.85);
+        tree2.rotation.y = -1.4;
+        group.add(tree2);
+      } else if (id === 'log') {
+        const house = createTavernHouse();
+        house.scale.setScalar(0.88);
+        house.position.set(0.45, 1.12, -0.45);
+        house.rotation.y = -0.25;
+        group.add(house);
+
+        const rockArch = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.26, 7, 12, Math.PI), materials.rock);
+        rockArch.position.set(-0.75, 0.98, 0.05);
+        rockArch.rotation.y = 0.4;
+        group.add(rockArch);
+
+        const tree = createPalmTree(0.92);
+        tree.position.set(-1.3, 0.95, -0.75);
+        group.add(tree);
+
+        const villager = createMiniCharacter(materials.pirateBlack, true, false);
+        villager.position.set(-0.2, 0.98, 0.95);
+        group.add(villager);
+        animatedProps.push({ mesh: villager, baseY: 0.98, phase: 2.9 });
+
+        const barrel = createWoodBarrel();
+        barrel.position.set(1.15, 0.98, 0.45);
+        group.add(barrel);
+      } else if (id === 'signal') {
+        const towerBase = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.78, 1.1, 8), materials.rock);
+        towerBase.position.set(0, 1.55, -0.25);
+        group.add(towerBase);
+
+        const towerMid = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.58, 1.4, 8), materials.houseWall);
+        towerMid.position.set(0, 2.75, -0.25);
+        group.add(towerMid);
+
+        const towerBalcony = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.55, 0.16, 8), materials.woodDark);
+        towerBalcony.position.set(0, 3.5, -0.25);
+        group.add(towerBalcony);
+
+        const beacon = new THREE.Mesh(new THREE.OctahedronGeometry(0.42, 0), materials.gold);
+        beacon.position.set(0, 4.05, -0.25);
+        group.add(beacon);
+        animatedProps.push({ mesh: beacon, baseY: 4.05, phase: 4.1, rotate: true });
+
+        const towerRoof = new THREE.Mesh(new THREE.ConeGeometry(0.58, 0.55, 8), materials.houseRoof);
+        towerRoof.position.set(0, 4.65, -0.25);
+        group.add(towerRoof);
+
+        const chest = createTreasureChest(false);
+        chest.position.set(0.95, 0.98, 0.5);
+        chest.rotation.y = -0.4;
+        group.add(chest);
+
+        const tree = createPalmTree(0.88);
+        tree.position.set(-1.15, 0.95, 0.35);
+        group.add(tree);
+
+        const lookout = createMiniCharacter(materials.pirateRed, false, false);
+        lookout.position.set(-0.45, 0.98, 0.88);
+        group.add(lookout);
+        animatedProps.push({ mesh: lookout, baseY: 0.98, phase: 1.1 });
+      }
+
+      enableShadowRecursive(group);
+      scene.add(group);
+    }
+
+    buildPirateIsland('haven', -4.5, 1.5, 3.5);
+    buildPirateIsland('vault', -19.5, -9.5, 3.2);
+    buildPirateIsland('log', 11.5, -10.5, 3.2);
+    buildPirateIsland('signal', 10.5, 11.5, 3.0);
+
+    [
+      [-12, 8], [4, -15], [-14, -18], [18, 2], [-23, 4], [2, 16], [-8, -11], [19, -16]
+    ].forEach(([rx, rz], i) => {
+      const rockGroup = new THREE.Group();
+      rockGroup.position.set(rx, 0, rz);
+
+      const mainRock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.8 + (i % 3) * 0.35, 0), materials.rock);
+      mainRock.position.y = 0.25;
+      mainRock.rotation.set(i, i * 0.6, 0);
+      rockGroup.add(mainRock);
+
+      const subRock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.45 + (i % 2) * 0.2, 0), materials.rockDark);
+      subRock.position.set(0.65, 0.1, 0.35);
+      rockGroup.add(subRock);
+
+      enableShadowRecursive(rockGroup);
+      scene.add(rockGroup);
+    });
+
+    function createCloudCluster(x, y, z, scale) {
+      const cGroup = new THREE.Group();
+      cGroup.position.set(x, y, z);
+      const puffs = [
+        [0, 0, 0, 1.3], [-1.1, -0.15, 0.2, 0.95], [1.15, -0.1, -0.15, 1.0], [0.3, 0.45, 0.25, 0.85]
+      ];
+      puffs.forEach(([px, py, pz, r]) => {
+        const m = new THREE.Mesh(new THREE.DodecahedronGeometry(r, 1), materials.cloud);
+        m.position.set(px, py, pz);
+        m.scale.y = 0.62;
+        cGroup.add(m);
+      });
+      cGroup.scale.setScalar(scale);
+      scene.add(cGroup);
+      skyClouds.push({ mesh: cGroup, baseX: x, speed: 0.25 + (scale * 0.1) });
+    }
+
+    [
+      [-28, 13, -24, 1.6], [22, 14, -26, 1.8], [-12, 15, -32, 1.4],
+      [30, 12, 8, 1.5], [-32, 13, 14, 1.7]
+    ].forEach(c => createCloudCluster(c[0], c[1], c[2], c[3]));
+
+    function createSeagull(centerX, centerZ, radius, speed, phase) {
+      const bird = new THREE.Group();
+      const wingGeo = new THREE.BoxGeometry(0.32, 0.03, 0.1);
+      const leftWing = new THREE.Mesh(wingGeo, materials.sailWhite);
+      leftWing.position.x = -0.15;
+      const rightWing = new THREE.Mesh(wingGeo, materials.sailWhite);
+      rightWing.position.x = 0.15;
+      bird.add(leftWing, rightWing);
+      scene.add(bird);
+      seaBirds.push({ group: bird, leftWing, rightWing, centerX, centerZ, radius, speed, phase });
+    }
+
+    createSeagull(-4.5, 1.5, 4.8, 0.85, 0);
+    createSeagull(-4.5, 1.5, 5.6, 0.75, 2.4);
+    createSeagull(-19.5, -9.5, 4.5, 0.9, 1.2);
+    createSeagull(11.5, -10.5, 4.5, 0.8, 3.7);
+
+    // ============================================================================
+    // CAPTAIN REZTROID'S SHIP ("THE BLACK REVENGE")
+    // ============================================================================
+    const shipGroup = new THREE.Group();
+    shipGroup.position.set(-4.5, 0.15, 6.5);
+    shipGroup.rotation.y = -0.3;
+    scene.add(shipGroup);
+
+    const shipModel = new THREE.Group();
+    shipGroup.add(shipModel);
+
+    const lowerHull = new THREE.Mesh(new THREE.BoxGeometry(1.32, 0.45, 3.1), materials.woodDark);
+    lowerHull.position.y = 0.26;
+    shipModel.add(lowerHull);
+
+    const upperHull = new THREE.Mesh(new THREE.BoxGeometry(1.56, 0.42, 3.45), materials.woodMid);
+    upperHull.position.y = 0.58;
+    shipModel.add(upperHull);
+
+    const mainDeck = new THREE.Mesh(new THREE.BoxGeometry(1.46, 0.08, 3.3), materials.woodLight);
+    mainDeck.position.y = 0.8;
+    shipModel.add(mainDeck);
+
+    [-0.74, 0.74].forEach(rx => {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.18, 3.2), materials.woodDark);
+      rail.position.set(rx, 0.88, 0);
+      shipModel.add(rail);
+    });
+
+    const hullTrim = new THREE.Mesh(new THREE.BoxGeometry(1.62, 0.1, 3.5), materials.hullTrim);
+    hullTrim.position.y = 0.68;
+    shipModel.add(hullTrim);
+
+    const bowWedge = new THREE.Mesh(new THREE.ConeGeometry(0.95, 1.25, 4), materials.woodMid);
+    bowWedge.rotation.x = Math.PI / 2;
+    bowWedge.rotation.z = Math.PI / 4;
+    bowWedge.scale.set(0.82, 1, 0.48);
+    bowWedge.position.set(0, 0.58, 2.15);
+    shipModel.add(bowWedge);
+
+    const bowSprit = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.075, 1.75, 7), materials.woodDark);
+    bowSprit.rotation.x = Math.PI / 2.65;
+    bowSprit.position.set(0, 0.88, 2.38);
+    shipModel.add(bowSprit);
+
+    const figurehead = new THREE.Mesh(new THREE.OctahedronGeometry(0.18, 0), materials.gold);
+    figurehead.position.set(0, 0.68, 2.35);
+    shipModel.add(figurehead);
+
+    const rudder = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.65, 0.38), materials.woodDark);
+    rudder.position.set(0, 0.35, -1.82);
+    shipModel.add(rudder);
+
+    const sternCabin = new THREE.Mesh(new THREE.BoxGeometry(1.44, 0.72, 1.18), materials.woodLight);
+    sternCabin.position.set(0, 1.05, -1.12);
+    shipModel.add(sternCabin);
+
+    const cabinRoof = new THREE.Mesh(new THREE.BoxGeometry(1.52, 0.1, 1.26), materials.woodDark);
+    cabinRoof.position.set(0, 1.42, -1.12);
+    shipModel.add(cabinRoof);
+
+    [-0.36, 0, 0.36].forEach(wx => {
+      const rearWin = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.24, 0.08), materials.windowGlow);
+      rearWin.position.set(wx, 1.08, -1.7);
+      shipModel.add(rearWin);
+    });
+
+    const sternLantern = new THREE.Mesh(new THREE.OctahedronGeometry(0.16, 0), materials.lanternGlow);
+    sternLantern.position.set(0, 1.62, -1.75);
+    shipModel.add(sternLantern);
+
+    const helmStand = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 0.38, 6), materials.woodDark);
+    helmStand.position.set(0, 1.62, -0.62);
+    shipModel.add(helmStand);
+
+    const helmWheel = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.03, 6, 12), materials.gold);
+    helmWheel.position.set(0, 1.78, -0.58);
+    shipModel.add(helmWheel);
+
+    const mainMast = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.11, 3.6, 8), materials.woodLight);
+    mainMast.position.set(0, 2.15, 0.12);
+    shipModel.add(mainMast);
+
+    const crowsNest = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.18, 0.26, 9), materials.woodDark);
+    crowsNest.position.set(0, 3.45, 0.12);
+    shipModel.add(crowsNest);
+
+    const topPennant = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.55, 4), materials.pirateRed);
+    topPennant.rotation.z = Math.PI / 2;
+    topPennant.position.set(-0.26, 3.92, 0.12);
+    shipModel.add(topPennant);
+
+    const mainYardTop = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.1, 7), materials.woodDark);
+    mainYardTop.rotation.z = Math.PI / 2;
+    mainYardTop.position.set(0, 2.92, 0.2);
+    shipModel.add(mainYardTop);
+
+    const mainYardBot = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.0, 7), materials.woodDark);
+    mainYardBot.rotation.z = Math.PI / 2;
+    mainYardBot.position.set(0, 1.5, 0.2);
+    shipModel.add(mainYardBot);
+
+    const foreMast = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 2.55, 8), materials.woodLight);
+    foreMast.position.set(0, 1.65, 1.25);
+    shipModel.add(foreMast);
+
+    const foreYardTop = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.45, 6), materials.woodDark);
+    foreYardTop.rotation.z = Math.PI / 2;
+    foreYardTop.position.set(0, 2.22, 1.32);
+    shipModel.add(foreYardTop);
+
+    function createCurvedSailGeo(w, h, curveDepth) {
+      const geo = new THREE.PlaneGeometry(w, h, 12, 8);
+      const pos = geo.attributes.position;
+      for (let i = 0; i < pos.count; i++) {
+        const nx = pos.getX(i) / (w / 2);
+        const ny = pos.getY(i) / (h / 2);
+        const bulge = Math.cos(nx * Math.PI * 0.45) * Math.cos(ny * Math.PI * 0.45) * curveDepth;
+        pos.setZ(i, bulge);
+      }
+      geo.computeVertexNormals();
+      return geo;
+    }
+
+    const mainSail = new THREE.Mesh(createCurvedSailGeo(1.92, 1.42, 0.22), materials.sailJollyRoger);
+    mainSail.position.set(0, 2.21, 0.22);
+    shipModel.add(mainSail);
+
+    const foreSail = new THREE.Mesh(createCurvedSailGeo(1.32, 0.98, 0.16), materials.sailWhite);
+    foreSail.position.set(0, 1.72, 1.34);
+    shipModel.add(foreSail);
+
+    const riggingPoints = [
+      new THREE.Vector3(0, 3.5, 0.12), new THREE.Vector3(0, 1.15, 2.85),
+      new THREE.Vector3(0, 3.5, 0.12), new THREE.Vector3(-0.72, 0.9, 0.12),
+      new THREE.Vector3(0, 3.5, 0.12), new THREE.Vector3(0.72, 0.9, 0.12),
+      new THREE.Vector3(0, 3.5, 0.12), new THREE.Vector3(0, 1.45, -1.65)
+    ];
+    const rigGeo = new THREE.BufferGeometry().setFromPoints(riggingPoints);
+    const riggingLines = new THREE.LineSegments(rigGeo, materials.rope);
+    shipModel.add(riggingLines);
+
+    [-0.82, 0.82].forEach(sideX => {
+      [-0.45, 0.18, 0.82].forEach(cz => {
+        const cannon = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.085, 0.42, 8), materials.gold);
+        cannon.rotation.z = Math.PI / 2;
+        cannon.position.set(sideX, 0.56, cz);
+        shipModel.add(cannon);
+      });
+
+      const anchor = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.03, 5, 8, Math.PI), materials.iron);
+      anchor.position.set(sideX * 0.95, 0.55, 1.55);
+      anchor.rotation.y = Math.PI / 2;
+      shipModel.add(anchor);
+    });
+
+    const captainChar = createMiniCharacter(materials.pirateRed, true, true);
+    captainChar.position.set(0, 1.44, -0.92);
+    shipModel.add(captainChar);
+
+    const mateChar = createMiniCharacter(materials.pirateBlue, false, false);
+    mateChar.position.set(0.36, 0.82, 0.55);
+    shipModel.add(mateChar);
+
+    enableShadowRecursive(shipModel);
+
+    const shipLight = new THREE.PointLight(0xffb74d, 1.35, 9.5);
+    shipLight.position.set(0, 1.75, -0.8);
+    shipModel.add(shipLight);
+
+    // ============================================================================
+    // NAVIGATION & CONTROLS
+    // ============================================================================
+    const shipState = {
+      targetX: -4.5,
+      targetZ: 6.5,
+      targetRot: null,
+      hasTarget: false,
+      vx: 0,
+      vz: 0
+    };
+
+    const keysPressed = {};
+    window.addEventListener('keydown', (e) => {
+      keysPressed[e.code] = true;
+      if (e.code === 'Space' && document.activeElement === document.body) {
+        e.preventDefault();
+        fireBroadsideCannons();
+      }
+    });
+    window.addEventListener('keyup', (e) => {
+      keysPressed[e.code] = false;
+    });
+
+    // Mobile Virtual Touch Controller Setup
+    function attachTouchControl(btnId, keyCode) {
+      const btn = document.getElementById(btnId);
+      if (!btn) return;
+      const startHandler = (e) => {
+        e.preventDefault();
+        ensureFirstInteractionAudio();
+        keysPressed[keyCode] = true;
+      };
+      const endHandler = (e) => {
+        e.preventDefault();
+        keysPressed[keyCode] = false;
+      };
+      btn.addEventListener('touchstart', startHandler, { passive: false });
+      btn.addEventListener('touchend', endHandler, { passive: false });
+      btn.addEventListener('touchcancel', endHandler, { passive: false });
+      btn.addEventListener('mousedown', startHandler);
+      btn.addEventListener('mouseup', endHandler);
+      btn.addEventListener('mouseleave', endHandler);
+    }
+
+    attachTouchControl('btn-mobile-forward', 'KeyW');
+    attachTouchControl('btn-mobile-left', 'KeyA');
+    attachTouchControl('btn-mobile-right', 'KeyD');
+
+    let activeIslandId = 'haven';
+    let cameraFollowShip = true;
+
+    const camSpherical = {
+      theta: 0.25,
+      phi: isMobileScreen ? 1.05 : 1.15,
+      radius: isMobileScreen ? 25.0 : 16.5
+    };
+    const camLookTarget = new THREE.Vector3(-4.5, 1.1, 4.0);
+
+    function updateActiveNavUI(islandId, customLabel) {
+      activeIslandId = islandId;
+      document.getElementById('active-island-name').textContent = customLabel || PIRATE_ISLANDS[islandId].name;
+      document.querySelectorAll('[data-nav]').forEach(btn => {
+        if (btn.getAttribute('data-nav') === islandId) {
+          btn.classList.add('pill-dark');
+        } else {
+          btn.classList.remove('pill-dark');
+        }
+      });
+    }
+
+    function showPreviewCard(islandId) {
+      const data = PIRATE_ISLANDS[islandId];
+      if (!data) return;
+      document.getElementById('preview-icon').textContent = data.icon;
+      document.getElementById('preview-badge').textContent = data.badge;
+      document.getElementById('preview-title').textContent = data.shortTitle;
+      document.getElementById('preview-desc').textContent = data.shortDesc;
+      document.getElementById('preview-link-label').textContent = data.linkLabel;
+      document.getElementById('preview-external-link').href = data.externalUrl;
+
+      const hlContainer = document.getElementById('preview-highlights');
+      hlContainer.innerHTML = data.highlights
+        .map(h => `<span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-stone-500/15">${h}</span>`)
+        .join('');
+
+      const card = document.getElementById('island-preview-card');
+      card.classList.remove('opacity-0', 'translate-y-4');
+      card.classList.add('opacity-100', 'translate-y-0');
+    }
+
+    function hidePreviewCard() {
+      const card = document.getElementById('island-preview-card');
+      card.classList.remove('opacity-100', 'translate-y-0');
+      card.classList.add('opacity-0', 'translate-y-4');
+    }
+
+    function sailToIsland(islandId, showCard = true) {
+      ensureFirstInteractionAudio();
+      const dock = islandDockTargets[islandId];
+      if (!dock) return;
+
+      shipState.targetX = dock.x;
+      shipState.targetZ = dock.z;
+      shipState.targetRot = dock.rot;
+      shipState.hasTarget = true;
+
+      updateActiveNavUI(islandId, PIRATE_ISLANDS[islandId].name);
+      document.getElementById('ship-status-text').textContent = `Berlayar menuju ${PIRATE_ISLANDS[islandId].name}...`;
+
+      if (showCard) {
+        showPreviewCard(islandId);
+      }
+      playCannonSound(true);
+    }
+
+    function spawnWaterRipple(x, z, maxScale = 4.5) {
+      const ringGeo = new THREE.RingGeometry(0.18, 0.32, 22);
+      ringGeo.rotateX(-Math.PI / 2);
+      const ringMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8, side: THREE.DoubleSide });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.position.set(x, 0.12, z);
+      scene.add(ring);
+
+      gsap.to(ring.scale, { x: maxScale, y: maxScale, z: maxScale, duration: 0.9, ease: 'power2.out' });
+      gsap.to(ringMat, {
+        opacity: 0,
+        duration: 0.9,
+        onComplete: () => {
+          scene.remove(ring);
+          ringGeo.dispose();
+          ringMat.dispose();
+        }
+      });
+    }
+
+    let lastWakeTime = 0;
+    function spawnWakeFoam(x, z, time) {
+      if (time - lastWakeTime < 0.14) return;
+      lastWakeTime = time;
+      const wakeGeo = new THREE.CircleGeometry(0.28, 8);
+      wakeGeo.rotateX(-Math.PI / 2);
+      const wakeMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45 });
+      const wake = new THREE.Mesh(wakeGeo, wakeMat);
+      const sternOffset = new THREE.Vector3(0, 0, -1.65).applyAxisAngle(new THREE.Vector3(0, 1, 0), shipGroup.rotation.y);
+      wake.position.set(x + sternOffset.x, 0.08, z + sternOffset.z);
+      scene.add(wake);
+
+      gsap.to(wake.scale, { x: 2.8, y: 2.8, z: 2.8, duration: 0.85, ease: 'power1.out' });
+      gsap.to(wakeMat, {
+        opacity: 0,
+        duration: 0.85,
+        onComplete: () => {
+          scene.remove(wake);
+          wakeGeo.dispose();
+          wakeMat.dispose();
+        }
+      });
+    }
+
+    function fireBroadsideCannons() {
+      ensureFirstInteractionAudio();
+      playCannonSound(false);
+
+      gsap.fromTo(shipModel.rotation, { z: 0.14 }, { z: 0, duration: 0.45, ease: 'elastic.out(1, 0.4)' });
+
+      [-1, 1].forEach(side => {
+        const localOffset = new THREE.Vector3(side * 0.95, 0.56, 0.18);
+        localOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), shipGroup.rotation.y);
+        const worldPos = shipGroup.position.clone().add(localOffset);
+
+        const puffGeo = new THREE.SphereGeometry(0.28, 8, 8);
+        const puffMat = new THREE.MeshBasicMaterial({ color: 0xfef3c7, transparent: true, opacity: 0.9 });
+        const puff = new THREE.Mesh(puffGeo, puffMat);
+        puff.position.copy(worldPos);
+        scene.add(puff);
+
+        const dirX = Math.cos(shipGroup.rotation.y) * side * 2.5;
+        const dirZ = -Math.sin(shipGroup.rotation.y) * side * 2.5;
+
+        gsap.to(puff.position, {
+          x: worldPos.x + dirX,
+          y: worldPos.y + 0.42,
+          z: worldPos.z + dirZ,
+          duration: 0.55,
+          ease: 'power2.out'
+        });
+        gsap.to(puff.scale, { x: 2.4, y: 2.4, z: 2.4, duration: 0.55 });
+        gsap.to(puffMat, {
+          opacity: 0,
+          duration: 0.55,
+          onComplete: () => {
+            scene.remove(puff);
+            puffGeo.dispose();
+            puffMat.dispose();
+          }
+        });
+      });
+    }
+
+    // ============================================================================
+    // CAMERA ORBIT & RAYCAST INTERACTION
+    // ============================================================================
+    let isDragging = false;
+    let prevPointer = { x: 0, y: 0 };
+    let pointerDownPos = { x: 0, y: 0 };
+    const raycaster = new THREE.Raycaster();
+    const mouseVec = new THREE.Vector2();
+
+    canvas.addEventListener('pointerdown', (e) => {
+      ensureFirstInteractionAudio();
+      isDragging = true;
+      prevPointer.x = e.clientX;
+      prevPointer.y = e.clientY;
+      pointerDownPos.x = e.clientX;
+      pointerDownPos.y = e.clientY;
+    });
+
+    window.addEventListener('pointermove', (e) => {
+      if (!isDragging) return;
+      const dx = e.clientX - prevPointer.x;
+      const dy = e.clientY - prevPointer.y;
+      prevPointer.x = e.clientX;
+      prevPointer.y = e.clientY;
+
+      camSpherical.theta -= dx * 0.0065;
+      camSpherical.phi = Math.max(0.45, Math.min(1.38, camSpherical.phi - dy * 0.0055));
+    });
+
+    window.addEventListener('pointerup', () => {
+      isDragging = false;
+    });
+
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      camSpherical.radius = Math.max(9, Math.min(36, camSpherical.radius + e.deltaY * 0.015));
+    }, { passive: false });
+
+    canvas.addEventListener('pointerup', (e) => {
+      const moveDist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
+      if (moveDist < 8 && e.button === 0) {
+        const { width, height } = getViewportDimensions();
+        mouseVec.x = (e.clientX / width) * 2 - 1;
+        mouseVec.y = -(e.clientY / height) * 2 + 1;
+        raycaster.setFromCamera(mouseVec, camera);
+
+        const islandHits = raycaster.intersectObjects(clickableIslandObjects, false);
+        if (islandHits.length > 0) {
+          const hitIslandId = islandHits[0].object.userData.islandId;
+          if (hitIslandId) {
+            sailToIsland(hitIslandId, true);
+            return;
+          }
+        }
+
+        const waterHits = raycaster.intersectObject(waterMesh);
+        if (waterHits.length > 0) {
+          const pt = waterHits[0].point;
+          shipState.targetX = THREE.MathUtils.clamp(pt.x, -45, 45);
+          shipState.targetZ = THREE.MathUtils.clamp(pt.z, -45, 45);
+          shipState.targetRot = null;
+          shipState.hasTarget = true;
+          spawnWaterRipple(shipState.targetX, shipState.targetZ);
+          document.getElementById('ship-status-text').textContent = 'Berlayar menuju koordinat laut...';
+        }
+      }
+    });
+
+    // ============================================================================
+    // UI MODALS, THEME TOGGLE & SCREEN PINS
+    // ============================================================================
+    const pinElements = {
+      haven: document.getElementById('pin-haven'),
+      vault: document.getElementById('pin-vault'),
+      log: document.getElementById('pin-log'),
+      signal: document.getElementById('pin-signal')
+    };
+
+    function updatePins() {
+      const { width, height } = getViewportDimensions();
+      const widthHalf = width / 2;
+      const heightHalf = height / 2;
+
+      Object.keys(islandPositions3D).forEach((key) => {
+        const pin = pinElements[key];
+        const pos = islandPositions3D[key].clone();
+        pos.project(camera);
+
+        if (pos.z > 1) {
+          pin.style.opacity = '0';
+          pin.style.pointerEvents = 'none';
+          return;
+        }
+
+        const rawX = pos.x * widthHalf + widthHalf;
+        const rawY = -(pos.y * heightHalf) + heightHalf;
+        const padX = width < 768 ? 48 : 64;
+        const padY = width < 768 ? 58 : 52;
+        const x = Math.max(padX, Math.min(width - padX, rawX));
+        const y = Math.max(padY, Math.min(height - padY, rawY));
+
+        pin.style.left = `${x}px`;
+        pin.style.top = `${y}px`;
+        pin.style.opacity = '1';
+        pin.style.pointerEvents = 'auto';
+
+        if (key === activeIslandId) {
+          pin.classList.add('ring-2', 'ring-amber-500/60');
+        } else {
+          pin.classList.remove('ring-2', 'ring-amber-500/60');
+        }
+      });
+    }
+
+    function openCurrentIslandModal() {
+      const data = PIRATE_ISLANDS[activeIslandId];
+      if (!data) return;
+      document.getElementById('modal-tag').textContent = data.badge;
+      document.getElementById('modal-body').innerHTML = data.html;
+
+      const modal = document.getElementById('island-modal');
+      const panel = document.getElementById('island-modal-panel');
+      modal.classList.remove('pointer-events-none', 'opacity-0');
+      modal.classList.add('pointer-events-auto', 'opacity-100');
+      panel.classList.remove('translate-y-8');
+      panel.classList.add('translate-y-0');
+      lucide.createIcons();
+    }
+
+    function closeIslandModal() {
+      const modal = document.getElementById('island-modal');
+      const panel = document.getElementById('island-modal-panel');
+      modal.classList.add('pointer-events-none', 'opacity-0');
+      modal.classList.remove('pointer-events-auto', 'opacity-100');
+      panel.classList.add('translate-y-8');
+      panel.classList.remove('translate-y-0');
+    }
+
+    function toggleHelpModal() {
+      const modal = document.getElementById('help-modal');
+      const isHidden = modal.classList.contains('opacity-0');
+      if (isHidden) {
+        modal.classList.remove('pointer-events-none', 'opacity-0');
+        modal.classList.add('pointer-events-auto', 'opacity-100');
+      } else {
+        modal.classList.add('pointer-events-none', 'opacity-0');
+        modal.classList.remove('pointer-events-auto', 'opacity-100');
+      }
+    }
+
+    function toggleCameraFollow() {
+      cameraFollowShip = !cameraFollowShip;
+      const dot = document.getElementById('cam-mode-dot');
+      const txt = document.getElementById('cam-mode-text');
+      if (cameraFollowShip) {
+        dot.className = 'w-2 h-2 rounded-full bg-emerald-600 shrink-0';
+        txt.textContent = 'Follow Ship';
+      } else {
+        dot.className = 'w-2 h-2 rounded-full bg-amber-600 shrink-0';
+        txt.textContent = 'Free Look';
+      }
+    }
+
+    function toggleSkyTheme() {
+      isNightMode = !isNightMode;
+      document.body.classList.toggle('night-mode', isNightMode);
+      const target = isNightMode ? THEMES.night : THEMES.day;
+
+      gsap.to(scene.background, { r: target.skyHorizon.r, g: target.skyHorizon.g, b: target.skyHorizon.b, duration: 1.0 });
+      gsap.to(scene.fog.color, { r: target.fog.r, g: target.fog.g, b: target.fog.b, duration: 1.0 });
+      gsap.to(waterMat.color, { r: target.waterColor.r, g: target.waterColor.g, b: target.waterColor.b, duration: 1.0 });
+      gsap.to(ambientLight.color, { r: target.ambientColor.r, g: target.ambientColor.g, b: target.ambientColor.b, duration: 1.0 });
+      gsap.to(sunLight.color, { r: target.sunColor.r, g: target.sunColor.g, b: target.sunColor.b, duration: 1.0 });
+
+      const icon = document.getElementById('theme-icon');
+      icon.setAttribute('data-lucide', isNightMode ? 'sun' : 'moon');
+      lucide.createIcons();
+    }
+
+    // ============================================================================
+    // "HE'S A PIRATE" (PIRATES OF THE CARIBBEAN) CINEMATIC BGM AUDIO SYNTHESIS
+    // ============================================================================
+    let audioCtx = null;
+    let isPlayingBGM = false;
+    let shantyTimer = null;
+    let hasAutoStartedBGM = false;
+
+    // Iconic "He's a Pirate" main theme melody in D minor
+    const POTC_MELODY = [
+      { f: 293.66, dur: 0.24 }, // D4
+      { f: 329.63, dur: 0.24 }, // E4
+      { f: 392.00, dur: 0.48 }, // G4
+      { f: 392.00, dur: 0.48 }, // G4
+      { f: 440.00, dur: 0.24 }, // A4
+      { f: 392.00, dur: 0.24 }, // G4
+      { f: 349.23, dur: 0.48 }, // F4
+      { f: 392.00, dur: 0.48 }, // G4
+      { f: 523.25, dur: 0.48 }, // C5
+      { f: 440.00, dur: 0.48 }, // A4
+      { f: 392.00, dur: 0.48 }, // G4
+      { f: 349.23, dur: 0.48 }, // F4
+      { f: 392.00, dur: 0.48 }, // G4
+      { f: 329.63, dur: 0.96 }  // E4
+    ];
+    let potcStep = 0;
+
+    function initAudioContext() {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContextClass();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function playPotCNote() {
+      if (!isPlayingBGM || !audioCtx) return;
+      const now = audioCtx.currentTime;
+      const note = POTC_MELODY[potcStep % POTC_MELODY.length];
+      potcStep++;
+
+      const osc = audioCtx.createOscillator();
+      const filter = audioCtx.createBiquadFilter();
+      const gain = audioCtx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(note.f, now);
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(1150, now);
+      filter.frequency.exponentialRampToValueAtTime(380, now + note.dur * 0.85);
+
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(0.05, now + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + note.dur * 0.95);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.start(now);
+      osc.stop(now + note.dur);
+
+      // Bass drone on downbeats
+      if (potcStep % 2 === 0) {
+        const bassOsc = audioCtx.createOscillator();
+        const bassGain = audioCtx.createGain();
+        bassOsc.type = 'triangle';
+        bassOsc.frequency.setValueAtTime(146.83, now); // D3
+        bassGain.gain.setValueAtTime(0.001, now);
+        bassGain.gain.linearRampToValueAtTime(0.07, now + 0.03);
+        bassGain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+
+        bassOsc.connect(bassGain);
+        bassGain.connect(audioCtx.destination);
+        bassOsc.start(now);
+        bassOsc.stop(now + 0.35);
+      }
+    }
+
+    function toggleAudio() {
+      initAudioContext();
+      isPlayingBGM = !isPlayingBGM;
+      const eq = document.getElementById('bgm-eq');
+      const label = document.getElementById('audio-label');
+
+      if (isPlayingBGM) {
+        eq.classList.add('playing');
+        label.textContent = 'PotC On';
+        if (shantyTimer) clearInterval(shantyTimer);
+        playPotCNote();
+        shantyTimer = setInterval(playPotCNote, 410);
+      } else {
+        eq.classList.remove('playing');
+        label.textContent = 'PotC Theme';
+        if (shantyTimer) {
+          clearInterval(shantyTimer);
+          shantyTimer = null;
+        }
+      }
+    }
+
+    function ensureFirstInteractionAudio() {
+      if (!hasAutoStartedBGM) {
+        hasAutoStartedBGM = true;
+        if (!isPlayingBGM) {
+          toggleAudio();
+        }
+      }
+    }
+
+    function playCannonSound(isSoft) {
+      if (!audioCtx || !isPlayingBGM) return;
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(isSoft ? 120 : 95, now);
+      osc.frequency.exponentialRampToValueAtTime(28, now + 0.28);
+
+      gain.gain.setValueAtTime(isSoft ? 0.04 : 0.09, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.32);
+    }
+
+    // ============================================================================
+    // MAIN 60FPS ANIMATION LOOP & RESPONSIVE RESIZE
+    // ============================================================================
+    const clock = new THREE.Clock();
+
+    function normalizeAngleDiff(a) {
+      while (a > Math.PI) a -= Math.PI * 2;
+      while (a < -Math.PI) a += Math.PI * 2;
+      return a;
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = Math.min(clock.getDelta(), 0.05);
+      const elapsed = clock.getElapsedTime();
+
+      for (let i = 0; i < waterPosAttr.count; i++) {
+        const orig = waterOrigCoords[i];
+        const waveY = getWaveHeightAt(orig.x, orig.z, elapsed);
+        waterPosAttr.setY(i, waveY);
+      }
+      waterPosAttr.needsUpdate = true;
+
+      const forwardInput = (keysPressed['KeyW'] || keysPressed['ArrowUp'] ? 1 : 0) - (keysPressed['KeyS'] || keysPressed['ArrowDown'] ? 1 : 0);
+      const turnInput = (keysPressed['KeyA'] || keysPressed['ArrowLeft'] ? 1 : 0) - (keysPressed['KeyD'] || keysPressed['ArrowRight'] ? 1 : 0);
+      const boostMult = (keysPressed['ShiftLeft'] || keysPressed['ShiftRight']) ? 1.65 : 1.0;
+
+      if (forwardInput !== 0 || turnInput !== 0) {
+        shipState.hasTarget = false;
+        shipGroup.rotation.y += turnInput * 2.1 * dt;
+        const speed = forwardInput * 6.5 * boostMult;
+        shipState.vx = Math.sin(shipGroup.rotation.y) * speed;
+        shipState.vz = Math.cos(shipGroup.rotation.y) * speed;
+        shipGroup.position.x = THREE.MathUtils.clamp(shipGroup.position.x + shipState.vx * dt, -50, 50);
+        shipGroup.position.z = THREE.MathUtils.clamp(shipGroup.position.z + shipState.vz * dt, -50, 50);
+        spawnWakeFoam(shipGroup.position.x, shipGroup.position.z, elapsed);
+      } else if (shipState.hasTarget) {
+        const dx = shipState.targetX - shipGroup.position.x;
+        const dz = shipState.targetZ - shipGroup.position.z;
+        const dist = Math.hypot(dx, dz);
+
+        if (dist > 0.25) {
+          const desiredAngle = Math.atan2(dx, dz);
+          const angleDiff = normalizeAngleDiff(desiredAngle - shipGroup.rotation.y);
+          shipGroup.rotation.y += angleDiff * Math.min(1, dt * 5.2);
+
+          const moveSpeed = Math.min(dist * 2.4, 7.2);
+          shipGroup.position.x += Math.sin(shipGroup.rotation.y) * moveSpeed * dt;
+          shipGroup.position.z += Math.cos(shipGroup.rotation.y) * moveSpeed * dt;
+          spawnWakeFoam(shipGroup.position.x, shipGroup.position.z, elapsed);
+        } else {
+          if (shipState.targetRot !== null) {
+            const rotDiff = normalizeAngleDiff(shipState.targetRot - shipGroup.rotation.y);
+            shipGroup.rotation.y += rotDiff * Math.min(1, dt * 4.5);
+            if (Math.abs(rotDiff) < 0.04) {
+              shipState.hasTarget = false;
+              document.getElementById('ship-status-text').textContent = `Berlabuh di ${PIRATE_ISLANDS[activeIslandId].name}`;
+            }
+          } else {
+            shipState.hasTarget = false;
+            document.getElementById('ship-status-text').textContent = 'Siap berlayar · Klik pulau atau air laut';
+          }
+        }
+      }
+
+      const waveY = getWaveHeightAt(shipGroup.position.x, shipGroup.position.z, elapsed);
+      shipGroup.position.y = 0.14 + waveY * 0.65;
+      shipModel.rotation.x = Math.sin(elapsed * 2.1) * 0.035;
+
+      animatedProps.forEach(prop => {
+        if (prop.scalePulse) {
+          const s = 1 + Math.sin(elapsed * 2.0 + prop.phase) * 0.035;
+          prop.mesh.scale.set(s, s, 1);
+        } else {
+          prop.mesh.position.y = prop.baseY + Math.abs(Math.sin(elapsed * 2.5 + prop.phase)) * 0.12;
+        }
+        if (prop.rotate) {
+          prop.mesh.rotation.y += dt * 1.4;
+        }
+      });
+
+      skyClouds.forEach(c => {
+        c.mesh.position.x += c.speed * dt;
+        if (c.mesh.position.x > 48) c.mesh.position.x = -48;
+      });
+
+      seaBirds.forEach(b => {
+        const ang = elapsed * b.speed + b.phase;
+        b.group.position.set(
+          b.centerX + Math.cos(ang) * b.radius,
+          5.2 + Math.sin(elapsed * 1.8 + b.phase) * 0.45,
+          b.centerZ + Math.sin(ang) * b.radius
+        );
+        b.group.rotation.y = -ang;
+        const flap = Math.sin(elapsed * 9.5 + b.phase) * 0.42;
+        b.leftWing.rotation.z = flap;
+        b.rightWing.rotation.z = -flap;
+      });
+
+      if (cameraFollowShip) {
+        camLookTarget.lerp(new THREE.Vector3(shipGroup.position.x, 1.15, shipGroup.position.z), Math.min(1, dt * 5.0));
+      }
+
+      const sinPhi = Math.sin(camSpherical.phi);
+      const camX = camLookTarget.x + camSpherical.radius * sinPhi * Math.sin(camSpherical.theta);
+      const camY = camLookTarget.y + camSpherical.radius * Math.cos(camSpherical.phi);
+      const camZ = camLookTarget.z + camSpherical.radius * sinPhi * Math.cos(camSpherical.theta);
+
+      camera.position.set(camX, Math.max(2.2, camY), camZ);
+      camera.lookAt(camLookTarget);
+
+      updatePins();
+      renderer.render(scene, camera);
+    }
+
+    function handleViewportResize() {
+      const { width, height, isMobile } = getViewportDimensions();
+      camera.fov = isMobile ? 58 : 42;
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 2, 2.5));
+      renderer.setSize(width, height, false);
+    }
+
+    window.addEventListener('resize', handleViewportResize);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleViewportResize);
+    }
+
+    window.onload = function () {
+      lucide.createIcons();
+      handleViewportResize();
+      updateActiveNavUI('haven', PIRATE_ISLANDS.haven.name);
+      showPreviewCard('haven');
+      animate();
+    };
+  </script>
+</body>
+</html>
